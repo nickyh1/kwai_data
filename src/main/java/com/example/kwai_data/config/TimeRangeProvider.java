@@ -24,5 +24,14 @@ public class TimeRangeProvider {
 
         return new TimeRangeMillis(start.toEpochMilli(), end.toEpochMilli());
     }
+    public TimeRangeMillis yesterdayToTodayStart() {
+        ZoneId zoneId = ZoneId.of(props.getZone());
+        LocalDate today = LocalDate.now(clock.withZone(zoneId));
+
+        Instant start = today.minusDays(1).atStartOfDay(zoneId).toInstant(); // 昨天 00:00
+        Instant end = today.atStartOfDay(zoneId).toInstant();                // 今天 00:00
+
+        return new TimeRangeMillis(start.toEpochMilli(), end.toEpochMilli());
+    }
 }
 
