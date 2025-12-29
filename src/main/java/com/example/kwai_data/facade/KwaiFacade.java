@@ -2,18 +2,21 @@ package com.example.kwai_data.facade;
 
 // package com.example.kwai_data.facade;
 
+import com.example.kwai_data.config.EndMsMode;
+import com.example.kwai_data.config.TimeRangeMillis;
 import com.example.kwai_data.config.TimeRangeProvider;
 import com.example.kwai_data.data.OrderDto;
 import com.example.kwai_data.data.sellerInfo;
 import com.example.kwai_data.service.FundsAccountInfoService;
 import com.example.kwai_data.service.OrderCursorListService;
 import com.example.kwai_data.service.sellerInfoService;
+import com.example.kwai_data.util.TimeUtil;
 import com.kuaishou.merchant.open.api.common.utils.GsonUtils;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import java.awt.*;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -58,7 +61,7 @@ public class KwaiFacade {
 //        );
 
 
-        syncLast7Days();
+        monthStartToTodayStart();
 
         sellerInfoService.upsert(totalData);
 
@@ -70,8 +73,19 @@ public class KwaiFacade {
         // var funds = fundsService.queryBills(...);
         // 统一落库 / 汇总计算 / 发送消息等
     }
-    public void syncLast7Days() throws Exception {
-        var range = timeRangeProvider.yesterdayToTodayStart();
+
+    public void monthStartToTodayStart() throws Exception {
+        TimeRangeMillis range = timeRangeProvider.monthStartToTodayStart();
+
+        List<TimeRangeMillis> ranges = timeRangeProvider.splitByDays(range, 7, EndMsMode.INCLUSIVE);
+
+        for (TimeRangeMillis r : ranges) {
+            syncOrdersInRange(r);
+        }
+    }
+
+    public void syncOrdersInRange(TimeRangeMillis r) throws Exception {
+        //var range = timeRangeProvider.yesterdayToTodayStart();
 
         String cursor = null;
         int pageSize = 50;
@@ -82,11 +96,13 @@ public class KwaiFacade {
         for (int i = 0; i < maxPages; i++) {
             var resp = orderCursorListService.fetchOnce(
                     1, pageSize, 0, 1,
-                    range.getStartMs(), range.getEndMs(),
+                    r.getStartMs(), r.getEndMs(),
                     1, cursor
             );
-            System.out.println("1");
-            //Thread.sleep(1000);
+            System.out.println(i);
+            System.out.println(TimeUtil.toZonedDateTime(r.getStartMs(), "Asia/Shanghai")
+                    +" "+TimeUtil.toZonedDateTime(r.getEndMs(), "Asia/Shanghai"));
+            Thread.sleep(1000);
             // 1) 提取订单列表（按实际结构改）
             OrderList orderlist[] = orderCursorListService.extractOrderList(resp);
 
@@ -94,7 +110,7 @@ public class KwaiFacade {
                 if (item == null) continue;
                 OrderDto dto = new OrderDto(item);
                 orderCursorListService.upsertOne(dto);
-                System.out.println(dto.getCreateTime());
+                //System.out.println(dto.getCreateTime());
 
             }
 
