@@ -114,6 +114,7 @@ public class OrderDto {
         this.createTime = toInstantMs(base == null ? null : base.getCreateTime());
         this.updateTime = toInstantMs(base == null ? null : base.getUpdateTime());
         this.receiveTime = toInstantMs(base == null ? null : base.getRecvTime());
+        System.out.println(orderNo+" "+createTime);
 
         // 状态/类型
         this.orderStatus = base == null ? null : String.valueOf(base.getStatus());

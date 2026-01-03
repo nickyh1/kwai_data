@@ -14,6 +14,8 @@ import com.example.kwai_data.util.TimeUtil;
 import com.kuaishou.merchant.open.api.common.utils.GsonUtils;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -26,6 +28,7 @@ public class KwaiFacade {
     private final FundsAccountInfoService fundsAccountInfoService;
     private final OrderCursorListService orderCursorListService;
     private final TimeRangeProvider timeRangeProvider;
+    private final MongoTemplate erpMongoTemplate;
     // 预留：后续继续注入
     // private final OrderService orderService;
     // private final FundsService fundsService;
@@ -44,8 +47,10 @@ public class KwaiFacade {
     /** 预留：后续可做“全量同步”编排 */
     public void syncAll() throws Exception {
         // 例如：
+
+        clearErpCollectionsKeepIndexes();
         sellerInfo totalData = new sellerInfo();
-        System.out.println(fundsAccountInfoService.getBalance());
+        //System.out.println(fundsAccountInfoService.getBalance());
         //System.out.println(sellerInfoService.fetchSellerInfo().getMsg());
         totalData.setShopId(sellerInfoService.fetchSellerInfo().getData().getSellerId());
         totalData.setShopName(sellerInfoService.fetchSellerInfo().getData().getName());
@@ -74,9 +79,17 @@ public class KwaiFacade {
         // 统一落库 / 汇总计算 / 发送消息等
     }
 
+    public void clearErpCollectionsKeepIndexes() {
+        Query all = new Query(); // 空查询匹配全部
+        List<String> collections = List.of("orders", "seller_info");
+        for (String col : collections) {
+            erpMongoTemplate.remove(all, col);
+        }
+    }
+
     public void monthStartToTodayStart() throws Exception {
         TimeRangeMillis range = timeRangeProvider.monthStartToNow();
-        System.out.println(range.getStartMs()+" "+range.getEndMs());
+        //System.out.println(range.getStartMs()+" "+range.getEndMs());
         List<TimeRangeMillis> ranges = timeRangeProvider.splitByDays(range, 7, EndMsMode.INCLUSIVE);
 
         for (TimeRangeMillis r : ranges) {
