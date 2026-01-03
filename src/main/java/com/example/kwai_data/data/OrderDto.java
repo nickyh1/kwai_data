@@ -15,6 +15,8 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -112,6 +114,7 @@ public class OrderDto {
         this.shipTime = toInstantMs(base == null ? null : base.getSendTime());
         this.refundInitiateTime = toInstantMs(base == null ? null : base.getRefundTime());
         this.createTime = toInstantMs(base == null ? null : base.getCreateTime());
+        this.createTime.atZone(ZoneId.of("Asia/Shanghai"));
         this.updateTime = toInstantMs(base == null ? null : base.getUpdateTime());
         this.receiveTime = toInstantMs(base == null ? null : base.getRecvTime());
         System.out.println(orderNo+" "+createTime);
@@ -162,6 +165,7 @@ public class OrderDto {
     private static Instant toInstantMs(Long ms) {
         if (ms == null || ms <= 0) return null;
         return Instant.ofEpochMilli(ms);
+
     }
     private static BigDecimal fenToYuan(Long fen) {
         if (fen == null) return null;
