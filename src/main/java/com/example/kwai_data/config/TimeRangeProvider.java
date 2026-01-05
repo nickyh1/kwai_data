@@ -36,6 +36,20 @@ public class TimeRangeProvider {
         return new TimeRangeMillis(start.toEpochMilli(), end.toEpochMilli());
     }//昨天一天的
 
+    public TimeRangeMillis lastMonthStartToNow() {
+        ZoneId zoneId = ZoneId.of(props.getZone());
+        LocalDate today = LocalDate.now(clock.withZone(zoneId));
+
+        // 上月的第一天
+        LocalDate lastMonthStartDate = today.minusMonths(1).withDayOfMonth(1);
+
+        Instant start = lastMonthStartDate.atStartOfDay(zoneId).toInstant(); // 上月1号 00:00
+        Instant end = clock.instant();                                       // 现在（当前时刻）
+
+        return new TimeRangeMillis(start.toEpochMilli(), end.toEpochMilli());
+    }
+
+
     public TimeRangeMillis monthStartToTodayStart() {
         ZoneId zoneId = ZoneId.of(props.getZone());
         LocalDate today = LocalDate.now(clock.withZone(zoneId));

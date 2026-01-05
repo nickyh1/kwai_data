@@ -88,7 +88,7 @@ public class KwaiFacade {
     }
 
     public void monthStartToTodayStart() throws Exception {
-        TimeRangeMillis range = timeRangeProvider.monthStartToNow();
+        TimeRangeMillis range = timeRangeProvider.lastMonthStartToNow();
         //System.out.println(range.getStartMs()+" "+range.getEndMs());
         List<TimeRangeMillis> ranges = timeRangeProvider.splitByDays(range, 7, EndMsMode.INCLUSIVE);
 
