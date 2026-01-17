@@ -89,6 +89,8 @@ public class OrderDto {
     /** 商品单价快照 */
     private BigDecimal unitPriceSnapshot;
 
+    private BigDecimal expressFee;
+
     /** 退款信息列表 */
 
 

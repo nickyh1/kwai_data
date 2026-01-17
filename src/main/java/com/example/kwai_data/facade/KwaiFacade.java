@@ -2,17 +2,22 @@ package com.example.kwai_data.facade;
 
 // package com.example.kwai_data.facade;
 
+import com.example.kwai_data.client.KwaiClientFactory;
 import com.example.kwai_data.config.EndMsMode;
 import com.example.kwai_data.config.TimeRangeMillis;
 import com.example.kwai_data.config.TimeRangeProvider;
 import com.example.kwai_data.data.OrderDto;
+import com.example.kwai_data.data.ShopAuth;
 import com.example.kwai_data.data.sellerInfo;
+import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.example.kwai_data.service.FundsAccountInfoService;
 import com.example.kwai_data.service.OrderCursorListService;
 import com.example.kwai_data.service.sellerInfoService;
 import com.example.kwai_data.util.TimeUtil;
+import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.common.utils.GsonUtils;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
+import com.kuaishou.merchant.open.api.response.user.OpenUserSellerGetResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
@@ -29,46 +34,46 @@ public class KwaiFacade {
     private final OrderCursorListService orderCursorListService;
     private final TimeRangeProvider timeRangeProvider;
     private final MongoTemplate erpMongoTemplate;
+    private final ShopAuthRegistry registry;
+    private final KwaiClientFactory clientFactory;
     // 预留：后续继续注入
     // private final OrderService orderService;
     // private final FundsService fundsService;
 
     /** 示例：对外提供“获取店铺信息（JSON字符串）” */
-    public String getSellerInfoJson() throws Exception {
-        return GsonUtils.toJSON(sellerInfoService.fetchSellerInfo());
-
-    }
-
-    /** 示例：对外提供“获取店铺信息（对象）” */
-    public Object getSellerInfo() throws Exception {
-        return sellerInfoService.fetchSellerInfo();
-    }
+//    public String getSellerInfoJson() throws Exception {
+//        return GsonUtils.toJSON(sellerInfoService.fetchSellerInfo());
+//
+//    }
+//
+//    /** 示例：对外提供“获取店铺信息（对象）” */
+//    public Object getSellerInfo() throws Exception {
+//        return sellerInfoService.fetchSellerInfo();
+//    }
 
     /** 预留：后续可做“全量同步”编排 */
     public void syncAll() throws Exception {
         // 例如：
 
         clearErpCollectionsKeepIndexes();
-        sellerInfo totalData = new sellerInfo();
-        //System.out.println(fundsAccountInfoService.getBalance());
-        //System.out.println(sellerInfoService.fetchSellerInfo().getMsg());
-        totalData.setShopId(sellerInfoService.fetchSellerInfo().getData().getSellerId());
-        totalData.setShopName(sellerInfoService.fetchSellerInfo().getData().getName());
-        totalData.setAccountBalance(fundsAccountInfoService.getBalance());//设置成函数
 
-//        String cursor = null;
-//        int pageSize = 50;
-//        var range = timeRangeProvider.yesterdayToTodayStart();
-//        var resp = orderCursorListService.fetchOnce(
-//                1, pageSize, 0, 1,
-//                range.getStartMs(), range.getEndMs(),
-//                1, cursor
-//        );
+        for (var e : registry.asMap().entrySet()) {
 
+            String shopKey = e.getKey();
+            ShopAuth auth = e.getValue();
 
-        monthStartToTodayStart();
+            AccessTokenKsMerchantClient client = clientFactory.getClient(shopKey);
+            OpenUserSellerGetResponse resp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
 
-        sellerInfoService.upsert(totalData);
+            sellerInfo totalData = new sellerInfo();
+            totalData.setShopId(resp.getData().getSellerId());
+            totalData.setShopName(resp.getData().getName());
+            totalData.setAccountBalance(fundsAccountInfoService.getBalance(client, auth.getAccessToken()));//设置成函数
+            //获取数据
+            sellerInfoService.upsert(totalData);
+
+            LastMonthStartToTodayStart(shopKey);
+        }
 
 
         //totalData.setAccountBalance(fundsAccountInfoService.getAccountInfo().getData().get);
@@ -87,17 +92,17 @@ public class KwaiFacade {
         }
     }
 
-    public void monthStartToTodayStart() throws Exception {
+    public void LastMonthStartToTodayStart(String shopkey) throws Exception {
         TimeRangeMillis range = timeRangeProvider.lastMonthStartToNow();
         //System.out.println(range.getStartMs()+" "+range.getEndMs());
         List<TimeRangeMillis> ranges = timeRangeProvider.splitByDays(range, 7, EndMsMode.INCLUSIVE);
 
         for (TimeRangeMillis r : ranges) {
-            syncOrdersInRange(r);
+            syncOrdersInRange(r, shopkey);
         }
     }
 
-    public void syncOrdersInRange(TimeRangeMillis r) throws Exception {
+    public void syncOrdersInRange(TimeRangeMillis r, String shopkey) throws Exception {
         //var range = timeRangeProvider.yesterdayToTodayStart();
 
         String cursor = null;
@@ -108,9 +113,10 @@ public class KwaiFacade {
 
         for (int i = 0; i < maxPages; i++) {
             var resp = orderCursorListService.fetchOnce(
-                    1, pageSize, 0, 1,
+                    shopkey,1, pageSize, 0, 1,
                     r.getStartMs(), r.getEndMs(),
                     1, cursor
+
             );
             System.out.println(i);
             System.out.println(TimeUtil.toZonedDateTime(r.getStartMs(), "Asia/Shanghai")
@@ -136,6 +142,8 @@ public class KwaiFacade {
         }
 
     }
+
+
 
 
 

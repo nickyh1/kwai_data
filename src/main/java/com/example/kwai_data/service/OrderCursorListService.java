@@ -2,11 +2,15 @@ package com.example.kwai_data.service;
 
 
 
+import com.example.kwai_data.KwaiDataApplication;
+import com.example.kwai_data.client.KwaiClientFactory;
 import com.example.kwai_data.config.KwaiProperties;
 import com.example.kwai_data.data.OrderDto;
 import com.example.kwai_data.data.Order_Doc;
+import com.example.kwai_data.data.ShopAuth;
 import com.example.kwai_data.repository.OrderRepository;
 import com.example.kwai_data.mapper.OrderMapper;
+import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
 import com.kuaishou.merchant.open.api.request.order.OpenOrderCursorListRequest;
@@ -20,6 +24,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.awt.image.Kernel;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,16 +35,19 @@ import static org.springframework.data.mongodb.core.query.Criteria.where;
 @RequiredArgsConstructor
 public class OrderCursorListService {
 
-    private final AccessTokenKsMerchantClient client;
-    private final KwaiProperties props;
+    //private final AccessTokenKsMerchantClient client;
+    //private final KwaiProperties props;
     private final OrderRepository orderRepository;
     private final MongoTemplate mongoTemplate;
+    private final ShopAuthRegistry registry;
+    private final KwaiClientFactory clientFactory;
 
 
     /**
      * 单次拉取（对应 demo）
      */
     public OpenOrderCursorListResponse fetchOnce(
+            String shopKey,
             Integer orderViewStatus,
             Integer pageSize,
             Integer sort,
@@ -48,11 +56,20 @@ public class OrderCursorListService {
             Long endTime,
             Integer cpsType,
             String cursor
+
     ) throws Exception {
+        ShopAuth auth = registry.get(shopKey);
+        if (auth == null) {
+            throw new IllegalArgumentException("未找到店铺配置: " + shopKey);
+        }
+
+        AccessTokenKsMerchantClient client = clientFactory.getClient(shopKey);
+
         OpenOrderCursorListRequest request = new OpenOrderCursorListRequest();
-        request.setAccessToken(props.getAccessToken02());
+        request.setAccessToken(auth.getAccessToken());
         request.setApiMethodVersion(1L);
 
+        // 可选参数保持原逻辑
         if (orderViewStatus != null) request.setOrderViewStatus(orderViewStatus);
         if (pageSize != null) request.setPageSize(pageSize);
         if (sort != null) request.setSort(sort);
@@ -73,6 +90,7 @@ public class OrderCursorListService {
      * - cursor 初始可传 null（从第一页开始）
      */
     public List<OpenOrderCursorListResponse> fetchAllPages(
+            String shopKey,
             Integer orderViewStatus,
             Integer pageSize,
             Integer sort,
@@ -89,7 +107,7 @@ public class OrderCursorListService {
 
         for (int i = 0; i < maxPages; i++) {
             OpenOrderCursorListResponse resp = fetchOnce(
-                    orderViewStatus, pageSize, sort, queryType, beginTime, endTime, cpsType, cursor
+                    shopKey ,orderViewStatus, pageSize, sort, queryType, beginTime, endTime, cpsType, cursor
             );
             pages.add(resp);
 

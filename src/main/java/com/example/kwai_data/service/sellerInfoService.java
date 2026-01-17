@@ -21,13 +21,13 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class sellerInfoService {
 
-    private final AccessTokenKsMerchantClient client;
-    private final KwaiProperties props;
+
+    //private final KwaiProperties props;
     private final SellerInfoRepository sellerInfoRepository;
 
-    public OpenUserSellerGetResponse fetchSellerInfo() throws Exception {
+    public OpenUserSellerGetResponse fetchSellerInfo(AccessTokenKsMerchantClient client, String accessToken) throws Exception {
         OpenUserSellerGetRequest request = new OpenUserSellerGetRequest();
-        request.setAccessToken(props.getAccessToken02());
+        request.setAccessToken(accessToken);
         request.setApiMethodVersion(1L);
         return client.execute(request);
     }

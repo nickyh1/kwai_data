@@ -1,16 +1,22 @@
 # src/main/resources/application.yml
 kwai:
+  base-url: https://openapi.kwaixiaodian.com
+  shops:
+    shop-biaowang:
+      app-key: "ks697213520049866660"
+      app-secret: "zyNK73fVyCio7lLCnG6cKw"
+      sign-secret: "c8f7e28978c5f0415e238466f89da0f2"
+      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAM4ClLInqB-ESR7T0XKr0DGMJ_yuHS3_56cOS1NlBbPqVz-BokZ2_X_T3UvyZXlYpGu9eRo0sgg6opV8-J05YLRoSXmId3s_9TpqnCS4FlyiXkIhhIiAS13T2SWxHL9zv_L26Suv2KM6ZhM8wT3jQPehS7w-Q_ygFMAE"
 
-  url01: https://openapi.kwaixiaodian.com
 
-#  app-key01: ks705376292653020303
-#  app-secret01: 2ppILlsnrIhGa3-wkR8CAA
-#  sign-Secret01: 3f3350b6b21c54ffa08be7bfb75c5611
 
-  app-key02: ks697213520049866660
-  app-secret02: zyNK73fVyCio7lLCnG6cKw
-  sign-Secret02: c8f7e28978c5f0415e238466f89da0f2
-  access-token02: ChFvYXV0aC5hY2Nlc3NUb2tlbhJAyVtICRsJH9vLdWMn1642If0hOhDCbYtKext9eoHKNoISAcyEo3tvV52032Ugs0ymHt76VJB6gp9q-y4zh6rBJhoSj7CN238WSuq-kBNyCQnaCfBmIiASjd6JnHOrLLu1zOA-7aLsVyQLuLjLIlmbN6ls2_sU4ygFMAE
+
+
+
+
+
+
+
 
 
   access-token01: ChFvYXV0aC5hY2Nlc3NUb2tlbhJAwirwCS7S6Pw77men09afS4FY1p4mStxAhuB4TzmlnKaRaFt3XQzPQ9Gk7rQBtnR3KwLl89Czn_agiP5hvs0PghoSNobUQXjSSbKFNqfffV1RYgsfIiCNl76AEZTRxuiiBJ3gINw-4uB-vvhWvjnEvjfpGsP8SygFMAE

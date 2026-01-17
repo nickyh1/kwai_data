@@ -2,17 +2,26 @@ package com.example.kwai_data.client;
 
 // package com.example.kwai_data.config;
 
+
 import com.example.kwai_data.config.KwaiProperties;
-import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
+import com.example.kwai_data.repository.ShopAuthRegistry;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@EnableConfigurationProperties(KwaiProperties.class)
 public class KwaiClientConfig {
 
     @Bean
-    public AccessTokenKsMerchantClient ksMerchantClient(KwaiProperties props) {
-        return new AccessTokenKsMerchantClient(props.getUrl01(), props.getAppKey02(), props.getSignSecret02());
+    public ShopAuthRegistry shopAuthRegistry(KwaiProperties props) {
+        return new ShopAuthRegistry(props);
+    }
+
+    @Bean
+    public KwaiClientFactory kwaiClientFactory(KwaiProperties props) {
+        return new KwaiClientFactory(props);
     }
 }
+
 

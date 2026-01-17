@@ -16,21 +16,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class FundsAccountInfoService {
 
-    private final AccessTokenKsMerchantClient client;
-    private final KwaiProperties props;
+
 
     /**
      * 查询资金中心账户信息（余额/可用等，具体以返回字段为准）
      */
-    public OpenFundsCenterAccountInfoResponse fetchAccountInfo() throws Exception {
+    public OpenFundsCenterAccountInfoResponse fetchAccountInfo(AccessTokenKsMerchantClient client, String accessToken) throws Exception {
         OpenFundsCenterAccountInfoRequest request = new OpenFundsCenterAccountInfoRequest();
-        request.setAccessToken(props.getAccessToken02());
+        request.setAccessToken(accessToken);
         request.setApiMethodVersion(1L);
         return client.execute(request);
     }
 
-    public Long getBalance() throws Exception {
-        OpenFundsCenterAccountInfoResponse resp = fetchAccountInfo();
+    public Long getBalance(AccessTokenKsMerchantClient client, String accessToken) throws Exception {
+        OpenFundsCenterAccountInfoResponse resp = fetchAccountInfo(client, accessToken);
         List<AccountInfoDto> data = resp.getData();
 
         if (data != null) {
