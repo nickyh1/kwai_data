@@ -10,22 +10,18 @@ import java.util.concurrent.ConcurrentHashMap;
 public class KwaiClientFactory {
 
     private final KwaiProperties props;
-    private final Map<String, AccessTokenKsMerchantClient> cache = new ConcurrentHashMap<>();
+    //private final Map<String, AccessTokenKsMerchantClient> cache = new ConcurrentHashMap<>();
 
     public KwaiClientFactory(KwaiProperties props) {
         this.props = props;
     }
 
-    public AccessTokenKsMerchantClient getClient(String shopKey) {
-        ShopAuth auth = props.getShops().get(shopKey);
-        if (auth == null) throw new IllegalArgumentException("未找到店铺配置: " + shopKey);
-
-        return cache.computeIfAbsent(shopKey, k ->
+    public AccessTokenKsMerchantClient getClient() {
+        return
                 new AccessTokenKsMerchantClient(
                         props.getBaseUrl(),
-                        auth.getAppKey(),
-                        auth.getSignSecret()
-                )
-        );
+                        props.getAppKey(),
+                        props.getSignSecret()
+                );
     }
 }

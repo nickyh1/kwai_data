@@ -24,9 +24,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.awt.*;
 import java.awt.image.Kernel;
 import java.time.Instant;
 import java.util.*;
+import java.util.List;
 import java.util.stream.Collectors;
 
 import static org.springframework.data.mongodb.core.query.Criteria.where;
@@ -63,7 +65,7 @@ public class OrderCursorListService {
             throw new IllegalArgumentException("未找到店铺配置: " + shopKey);
         }
 
-        AccessTokenKsMerchantClient client = clientFactory.getClient(shopKey);
+        AccessTokenKsMerchantClient client = clientFactory.getClient();
 
         OpenOrderCursorListRequest request = new OpenOrderCursorListRequest();
         request.setAccessToken(auth.getAccessToken());
@@ -138,8 +140,10 @@ public class OrderCursorListService {
 //        return orderRepository.save(doc);
 //    }
 
-    public Order_Doc upsertOne(OrderDto dto) {
+    public Order_Doc upsertOne(OrderDto dto, String shopKey) {
         if (dto == null) return null;
+
+        String collection = orderCollection(shopKey);
 
         Order_Doc incoming = OrderMapper.toDocument(dto);
         if (incoming.getOrderNo() == null || incoming.getOrderNo().isBlank()) {
@@ -213,12 +217,15 @@ public class OrderCursorListService {
                 .upsert(true)
                 .returnNew(true);
 
-        Order_Doc updated = mongoTemplate.findAndModify(query, update, options, Order_Doc.class);
+
+        Order_Doc updated = mongoTemplate.findAndModify(query, update, options, Order_Doc.class, collection);
+        //Order_Doc updated = mongoTemplate.findAndModify(query, update, options, Order_Doc.class);
 
         // 如果 updated == null，说明本次是“旧 updateTime”的乱序数据，被保护条件拦下了；
         // 可选择返回库里现有版本（更符合调用方预期）
         if (updated == null) {
-            return orderRepository.findByOrderNo(incoming.getOrderNo()).orElse(null);
+            Query q2 = new Query(Criteria.where("orderNo").is(incoming.getOrderNo()));
+            return mongoTemplate.findOne(q2, Order_Doc.class, collection);
         }
         return updated;
     }
@@ -258,7 +265,12 @@ public class OrderCursorListService {
         return uniqueDocs.size();
     }
 
-
+    private String orderCollection(String shopKey) {
+        if (shopKey == null || shopKey.isBlank()) throw new IllegalArgumentException("shopKey is required");
+        // 强烈建议限制字符，避免注入/脏命名
+        //if (!shopKey.matches("[a-zA-Z0-9_a-zA-Z0-9]+")) throw new IllegalArgumentException("invalid shopKey");
+        return "orders_" + shopKey; // orders_shop01
+    }
 
     /**
      * 将 Document 转成 Update（避免手写每个字段的 update）

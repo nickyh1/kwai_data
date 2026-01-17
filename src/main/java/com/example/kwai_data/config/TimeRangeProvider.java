@@ -15,6 +15,19 @@ public class TimeRangeProvider {
     private final Clock clock; // 单独提供一个 Clock Bean
 
 
+    public TimeRangeMillis lastMonthStartToYesterdayEndInclusive() {
+        ZoneId zoneId = ZoneId.of(props.getZone()); // 建议 props.getZone()="Asia/Shanghai"
+        LocalDate today = LocalDate.now(clock.withZone(zoneId));
+
+        // 上个月1号 00:00
+        LocalDate startDate = today.minusMonths(1).withDayOfMonth(1);
+        Instant start = startDate.atStartOfDay(zoneId).toInstant();
+
+        // 昨天 23:59:59.999 = 今天 00:00 - 1ms
+        Instant endInclusive = today.atStartOfDay(zoneId).toInstant().minusMillis(1);
+
+        return new TimeRangeMillis(start.toEpochMilli(), endInclusive.toEpochMilli());
+    }
 
     public TimeRangeMillis last7DaysInclusive() {
         ZoneId zoneId = ZoneId.of(props.getZone());

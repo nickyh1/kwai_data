@@ -1,26 +1,14 @@
 # src/main/resources/application.yml
 kwai:
   base-url: https://openapi.kwaixiaodian.com
+  app-key: "ks697213520049866660"
+  app-secret: "zyNK73fVyCio7lLCnG6cKw"
+  sign-secret: "c8f7e28978c5f0415e238466f89da0f2"
   shops:
-    shop-biaowang:
-      app-key: "ks697213520049866660"
-      app-secret: "zyNK73fVyCio7lLCnG6cKw"
-      sign-secret: "c8f7e28978c5f0415e238466f89da0f2"
+    shop-biaowangchangjia:
       access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAM4ClLInqB-ESR7T0XKr0DGMJ_yuHS3_56cOS1NlBbPqVz-BokZ2_X_T3UvyZXlYpGu9eRo0sgg6opV8-J05YLRoSXmId3s_9TpqnCS4FlyiXkIhhIiAS13T2SWxHL9zv_L26Suv2KM6ZhM8wT3jQPehS7w-Q_ygFMAE"
-
-
-
-
-
-
-
-
-
-
-
-
-  access-token01: ChFvYXV0aC5hY2Nlc3NUb2tlbhJAwirwCS7S6Pw77men09afS4FY1p4mStxAhuB4TzmlnKaRaFt3XQzPQ9Gk7rQBtnR3KwLl89Czn_agiP5hvs0PghoSNobUQXjSSbKFNqfffV1RYgsfIiCNl76AEZTRxuiiBJ3gINw-4uB-vvhWvjnEvjfpGsP8SygFMAE
-#  access-tocken02: ChFvYXV0aC5hY2Nlc3NUb2tlbhJA3EvqO269gYrc4N6XzTW_oxEwCiej-l5rF_JXqc5jq8lFbL6P372kPW108PF3M2wSbE4Gg4-zrZMyu2XOiCU8OBoSJo3iSDSLTyCLQcuTrCclZgkgIiC-tL3xiZxLhLdoI0B7NMoYPjk192ppBV3KOO-S575tiygFMAE
+    shop-biaowanggongchang:
+      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAVcfbzJYZSaI33AV1LUqWhOiyhXkKL0tCAgcz6pGEol30XJC1PGEN2MGysNV7GoTGEPx-Z-Olu0ChzazuiEDNshoSj7CN238WSuq-kBNyCQnaCfBmIiC3qUXRvtt3-ihtvK1CGDgqnzxAecz7zvhDhwC9QfftKCgFMAE"
 
   time:
     zone: Asia/Shanghai

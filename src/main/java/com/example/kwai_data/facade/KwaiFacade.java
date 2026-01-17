@@ -17,6 +17,7 @@ import com.example.kwai_data.util.TimeUtil;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.common.utils.GsonUtils;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
+import com.kuaishou.merchant.open.api.response.funds.OpenFundsCenterWirhdrawRecordListResponse;
 import com.kuaishou.merchant.open.api.response.user.OpenUserSellerGetResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -55,24 +56,33 @@ public class KwaiFacade {
     public void syncAll() throws Exception {
         // 例如：
 
-        clearErpCollectionsKeepIndexes();
+        clearSellerCollectionsKeepIndexes();
 
         for (var e : registry.asMap().entrySet()) {
 
             String shopKey = e.getKey();
             ShopAuth auth = e.getValue();
+            System.out.println(shopKey);
 
-            AccessTokenKsMerchantClient client = clientFactory.getClient(shopKey);
-            OpenUserSellerGetResponse resp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
+            clearOrderCollectionsKeepIndexes(shopKey);
+            AccessTokenKsMerchantClient client = clientFactory.getClient();
 
+            OpenUserSellerGetResponse SellerInforesp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
             sellerInfo totalData = new sellerInfo();
-            totalData.setShopId(resp.getData().getSellerId());
-            totalData.setShopName(resp.getData().getName());
+            totalData.setShopId(SellerInforesp.getData().getSellerId());
+            totalData.setShopName(SellerInforesp.getData().getName());
             totalData.setAccountBalance(fundsAccountInfoService.getBalance(client, auth.getAccessToken()));//设置成函数
-            //获取数据
-            sellerInfoService.upsert(totalData);
 
-            LastMonthStartToTodayStart(shopKey);
+            sellerInfoService.sellerInfoupsert(totalData);
+            //获取数据
+
+            OpenFundsCenterWirhdrawRecordListResponse WRecord_resp = sellerInfoService.fetchWirhdrawRecordInfo(client, auth.getAccessToken());
+            sellerInfoService.WRecordupsert(WRecord_resp, shopKey);
+
+
+
+
+            //LastMonthStartToTodayStart(shopKey);
         }
 
 
@@ -84,12 +94,15 @@ public class KwaiFacade {
         // 统一落库 / 汇总计算 / 发送消息等
     }
 
-    public void clearErpCollectionsKeepIndexes() {
+    public void clearSellerCollectionsKeepIndexes() {
         Query all = new Query(); // 空查询匹配全部
-        List<String> collections = List.of("orders", "seller_info");
-        for (String col : collections) {
-            erpMongoTemplate.remove(all, col);
-        }
+        erpMongoTemplate.remove(all, "seller_info");
+
+    }
+
+    public void clearOrderCollectionsKeepIndexes(String shopKey) {
+        Query all = new Query(); // 空查询匹配全部
+        erpMongoTemplate.remove(all, "orders_"+shopKey);
     }
 
     public void LastMonthStartToTodayStart(String shopkey) throws Exception {
@@ -108,7 +121,7 @@ public class KwaiFacade {
         String cursor = null;
         int pageSize = 50;
         int maxPages = 500;          // 防止死循环
-        int batchSize = 200;         // saveAll 分批大小（可调）
+
 
 
         for (int i = 0; i < maxPages; i++) {
@@ -118,7 +131,8 @@ public class KwaiFacade {
                     1, cursor
 
             );
-            System.out.println(i);
+
+            System.out.println("\n");
             System.out.println(TimeUtil.toZonedDateTime(r.getStartMs(), "Asia/Shanghai")
                     +" "+TimeUtil.toZonedDateTime(r.getEndMs(), "Asia/Shanghai"));
             Thread.sleep(1000);
@@ -128,7 +142,7 @@ public class KwaiFacade {
             for (OrderList item : orderlist) {
                 if (item == null) continue;
                 OrderDto dto = new OrderDto(item);
-                orderCursorListService.upsertOne(dto);
+                orderCursorListService.upsertOne(dto, shopkey);
                 //System.out.println(dto.getCreateTime());
 
             }

@@ -38,12 +38,8 @@ public class ShopAuthRegistry {
             if (auth == null) {
                 throw new IllegalStateException("店铺 " + shopKey + " 的配置为空");
             }
-            if (isBlank(auth.getAppKey()) || isBlank(auth.getSignSecret()) || isBlank(auth.getAccessToken())) {
-                throw new IllegalStateException("店铺 " + shopKey + " 的 appKey/signSecret/accessToken 存在空值");
-            }
 
-            auth.setAppKey(auth.getAppKey().trim());
-            auth.setSignSecret(auth.getSignSecret().trim());
+
             auth.setAccessToken(auth.getAccessToken().trim());
 
             tmp.put(shopKey, auth);

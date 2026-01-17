@@ -144,12 +144,8 @@ public class OrderDto {
         this.unitPriceSnapshot = fenToYuan(item == null ? null : item.getPrice());
 
         // 子订单商品总价：price * num（分 → 元）
-        if (item != null && item.getPrice() != null && item.getNum() != null) {
-            long totalFen = item.getPrice() * (long) item.getNum();
-            this.subOrderTotalPrice = fenToYuan(totalFen);
-        } else {
-            this.subOrderTotalPrice = null;
-        }
+        this.subOrderTotalPrice = fenToYuan(item == null ? null : base.getTotalFee());;
+
         // 退款列表：refundStatus + handlingWay=10
         OrderRefundInfo[] arr = src.getOrderRefundList();
         if (arr != null && arr.length > 0 && arr[0] != null) {
