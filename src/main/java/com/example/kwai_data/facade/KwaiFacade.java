@@ -65,6 +65,8 @@ public class KwaiFacade {
             System.out.println(shopKey);
 
             clearOrderCollectionsKeepIndexes(shopKey);
+            clearwithdrawCollectionsKeepIndexes(shopKey);
+
             AccessTokenKsMerchantClient client = clientFactory.getClient();
 
             OpenUserSellerGetResponse SellerInforesp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
@@ -82,7 +84,7 @@ public class KwaiFacade {
 
 
 
-            //LastMonthStartToTodayStart(shopKey);
+            LastMonthStartToTodayStart(shopKey);
         }
 
 
@@ -103,6 +105,11 @@ public class KwaiFacade {
     public void clearOrderCollectionsKeepIndexes(String shopKey) {
         Query all = new Query(); // 空查询匹配全部
         erpMongoTemplate.remove(all, "orders_"+shopKey);
+    }
+
+    public void clearwithdrawCollectionsKeepIndexes(String shopKey) {
+        Query all = new Query(); // 空查询匹配全部
+        erpMongoTemplate.remove(all, "Withdraw_"+shopKey);
     }
 
     public void LastMonthStartToTodayStart(String shopkey) throws Exception {

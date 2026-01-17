@@ -71,7 +71,7 @@ public class sellerInfoService {
         if (records.isEmpty()) return 0;
 
         Instant now = Instant.now();
-        BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, "Withdraw"+shopKey);
+        BulkOperations bulk = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, "Withdraw_"+shopKey);
 
         for (WithdrawRecordDto r : records) {
             if (r == null) continue;
