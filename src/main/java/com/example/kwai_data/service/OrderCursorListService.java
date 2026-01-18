@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.awt.*;
 import java.awt.image.Kernel;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import java.util.List;
@@ -197,7 +198,7 @@ public class OrderCursorListService {
 
                 // 成功更新/插入时写入（注意：这里的 updateTime 是平台更新时间）
                 .set("updateTime", incoming.getUpdateTime())
-                .set("lastIngestedAt", now)
+                .set("lastIngestedAt", now.plus(Duration.ofHours(8)))
                 .set("orderStatus", incoming.getOrderStatus())
                 .set("refundInitiateTime", incoming.getRefundInitiateTime())
                 .set("receiveTime", incoming.getReceiveTime())

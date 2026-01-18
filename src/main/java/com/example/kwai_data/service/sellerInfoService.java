@@ -26,6 +26,7 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -81,13 +82,13 @@ public class sellerInfoService {
 
             Update u = new Update()
                     .set("platformWithdrawNo", r.getPlatformWithdrawNo())
-                    .set("withdrawTime", msToInstant(r.getCreateTime()))
-                    .set("receivedTime", msToInstant(r.getSuccessTime()))
+                    .set("withdrawTime", msToInstant(r.getCreateTime()).plus(Duration.ofHours(8)))
+                    .set("receivedTime", msToInstant(r.getSuccessTime()).plus(Duration.ofHours(8)))
                     .set("state", r.getState())
                     .set("withdrawMoney", r.getWithdrawMoney())
                     .set("failReason", emptyToNull(r.getFailReason()))
                     .set("withdrawDesc", emptyToNull(r.getWithdrawDesc()))
-                    .set("updateTime", now);
+                    .set("updateTime", now.plus(Duration.ofHours(8)));
 
             bulk.upsert(q, u);
         }
@@ -110,7 +111,7 @@ public class sellerInfoService {
 
         SellerInfo_Doc info = SellerInfoMapper.toEntity(dto);
 
-        info.setUpdateTime(Instant.now());
+        info.setUpdateTime(Instant.now().plus(Duration.ofHours(8)));
 
         return sellerInfoRepository.findByShopId(info.getShopId())
                 .map(existing -> {

@@ -4,6 +4,7 @@ package com.example.kwai_data.data;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.Instant;
 
 @Data

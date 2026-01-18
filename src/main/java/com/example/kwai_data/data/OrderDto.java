@@ -114,14 +114,29 @@ public class OrderDto {
 
         // 时间类字段（毫秒时间戳）
         this.payTime = toInstantMs(base == null ? null : base.getPayTime());
+        if (this.payTime != null) {
+            this.payTime = this.payTime.plus(Duration.ofHours(8));
+        }
         this.shipTime = toInstantMs(base == null ? null : base.getSendTime());
+        if (this.shipTime != null) {
+            this.shipTime = this.shipTime.plus(Duration.ofHours(8));
+        }
         this.refundInitiateTime = toInstantMs(base == null ? null : base.getRefundTime());
+        if (this.refundInitiateTime != null) {
+            this.refundInitiateTime = this.refundInitiateTime.plus(Duration.ofHours(8));
+        }
         this.createTime = toInstantMs(base == null ? null : base.getCreateTime());
         if (this.createTime != null) {
             this.createTime = this.createTime.plus(Duration.ofHours(8));
         }
         this.updateTime = toInstantMs(base == null ? null : base.getUpdateTime());
+        if (this.updateTime != null) {
+            this.updateTime = this.updateTime.plus(Duration.ofHours(8));
+        }
         this.receiveTime = toInstantMs(base == null ? null : base.getRecvTime());
+        if (this.receiveTime != null) {
+            this.receiveTime = this.receiveTime.plus(Duration.ofHours(8));
+        }
         System.out.println(orderNo+" "+createTime);
 
         // 状态/类型
