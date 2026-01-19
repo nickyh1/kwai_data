@@ -40,7 +40,6 @@ public class OrderCursorListService {
 
     //private final AccessTokenKsMerchantClient client;
     //private final KwaiProperties props;
-    private final OrderRepository orderRepository;
     private final MongoTemplate mongoTemplate;
     private final ShopAuthRegistry registry;
     private final KwaiClientFactory clientFactory;

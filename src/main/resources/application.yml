@@ -6,13 +6,15 @@ kwai:
   sign-secret: "c8f7e28978c5f0415e238466f89da0f2"
   shops:
     shop-biaowangchangjia:
-      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAM4ClLInqB-ESR7T0XKr0DGMJ_yuHS3_56cOS1NlBbPqVz-BokZ2_X_T3UvyZXlYpGu9eRo0sgg6opV8-J05YLRoSXmId3s_9TpqnCS4FlyiXkIhhIiAS13T2SWxHL9zv_L26Suv2KM6ZhM8wT3jQPehS7w-Q_ygFMAE"
+      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAQyPVrTmwV6eDdNoZoThTAwH9Aq4JvzJPPY7ip_oClAEmL_0iBYfPWo4rKMimn0lM3632jItAx0wnPK-28qoPqxoSKMdmjD9TQIWA4cxc70QihgBtIiD34Z-XwNJgFD9bnFEWuekOIRpupZJORopsI3KnmTEJCygFMAE"
     shop-biaowanggongchang:
-      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAVcfbzJYZSaI33AV1LUqWhOiyhXkKL0tCAgcz6pGEol30XJC1PGEN2MGysNV7GoTGEPx-Z-Olu0ChzazuiEDNshoSj7CN238WSuq-kBNyCQnaCfBmIiC3qUXRvtt3-ihtvK1CGDgqnzxAecz7zvhDhwC9QfftKCgFMAE"
+      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJA2heGLAUAqvU1QFJ6rV0VHNYj9yxOWDTK5W6TsdkJw1nii_epLP0-N4hBY-c4pyTzN9Ypl_gfUzU8znlB1UP_qRoSNobUQXjSSbKFNqfffV1RYgsfIiBHorzSdRLjgEA7ueZSStcHFIG3ZgjE3D7EDRC0tynp8SgFMAE"
 
   time:
     zone: Asia/Shanghai
     lookback-days: 7
+
+
 
 spring:
   mongodb:
