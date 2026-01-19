@@ -89,7 +89,7 @@ public class KwaiFacade {
 
             syncRange(shopKey);
 
-            //LastMonthStartToTodayStart(shopKey);
+            LastMonthStartToTodayStart(shopKey);
         }
 
 
