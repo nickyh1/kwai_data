@@ -27,6 +27,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.*;
 
 @Component
@@ -68,17 +69,19 @@ public class KwaiFacade {
             ShopAuth auth = e.getValue();
             System.out.println(shopKey);
 
-            clearOrderCollectionsKeepIndexes(shopKey);
-            clearwithdrawCollectionsKeepIndexes(shopKey);
-            clearunsetlleCollectionsKeepIndexes(shopKey);
+            clearShopCollection("Unsetllement_",shopKey);
+            clearShopCollection("orders_",shopKey);
+            clearShopCollection("Withdraw_",shopKey);
+
 
             AccessTokenKsMerchantClient client = clientFactory.getClient();
 
             OpenUserSellerGetResponse SellerInforesp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
-            sellerInfo totalData = new sellerInfo();
-            totalData.setShopId(SellerInforesp.getData().getSellerId());
-            totalData.setShopName(SellerInforesp.getData().getName());
-            totalData.setAccountBalance(fundsAccountInfoService.getBalance(client, auth.getAccessToken()));//设置成函数
+            sellerInfo totalData = sellerInfo.builder()
+                    .shopId(SellerInforesp.getData().getSellerId())
+                    .shopName(SellerInforesp.getData().getName())
+                    .accountBalance(fundsAccountInfoService.getBalance(client, auth.getAccessToken()))
+                    .build();
 
             sellerInfoService.sellerInfoupsert(totalData);
             //获取数据
@@ -107,21 +110,12 @@ public class KwaiFacade {
 
     }
 
-    public void clearunsetlleCollectionsKeepIndexes(String shopKey) {
-        Query all = new Query(); // 空查询匹配全部
-        erpMongoTemplate.remove(all, "Unsetllement_"+shopKey);
-
+    private void clearShopCollection(String collectionPrefix, String shopKey) {
+        Query all = new Query();
+        erpMongoTemplate.remove(all,collectionPrefix + "_" + shopKey);
     }
 
-    public void clearOrderCollectionsKeepIndexes(String shopKey) {
-        Query all = new Query(); // 空查询匹配全部
-        erpMongoTemplate.remove(all, "orders_"+shopKey);
-    }
 
-    public void clearwithdrawCollectionsKeepIndexes(String shopKey) {
-        Query all = new Query(); // 空查询匹配全部
-        erpMongoTemplate.remove(all, "Withdraw_"+shopKey);
-    }
 
     public void LastMonthStartToTodayStart(String shopkey) throws Exception {
         TimeRangeMillis range = timeRangeProvider.lastMonthStartToNow();
