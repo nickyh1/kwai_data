@@ -7,8 +7,10 @@ kwai:
   shops:
     shop-biaowangchangjia:
       access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAQyPVrTmwV6eDdNoZoThTAwH9Aq4JvzJPPY7ip_oClAEmL_0iBYfPWo4rKMimn0lM3632jItAx0wnPK-28qoPqxoSKMdmjD9TQIWA4cxc70QihgBtIiD34Z-XwNJgFD9bnFEWuekOIRpupZJORopsI3KnmTEJCygFMAE"
+      refresh-token: "YOUR_REFRESH_TOKEN_HERE"
     shop-biaowanggongchang:
       access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJA2heGLAUAqvU1QFJ6rV0VHNYj9yxOWDTK5W6TsdkJw1nii_epLP0-N4hBY-c4pyTzN9Ypl_gfUzU8znlB1UP_qRoSNobUQXjSSbKFNqfffV1RYgsfIiBHorzSdRLjgEA7ueZSStcHFIG3ZgjE3D7EDRC0tynp8SgFMAE"
+      refresh-token: "YOUR_REFRESH_TOKEN_HERE"
 
   time:
     zone: Asia/Shanghai
