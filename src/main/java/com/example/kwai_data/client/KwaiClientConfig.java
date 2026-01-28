@@ -13,10 +13,7 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(KwaiProperties.class)
 public class KwaiClientConfig {
 
-    @Bean
-    public ShopAuthRegistry shopAuthRegistry(KwaiProperties props) {
-        return new ShopAuthRegistry(props);
-    }
+    // ShopAuthRegistry 已标注 @Component，由 Spring 自动管理，无需手动创建 Bean
 
     @Bean
     public KwaiClientFactory kwaiClientFactory(KwaiProperties props) {
