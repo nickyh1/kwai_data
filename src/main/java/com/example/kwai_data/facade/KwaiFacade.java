@@ -77,6 +77,7 @@ public class KwaiFacade {
             AccessTokenKsMerchantClient client = clientFactory.getClient();
 
             OpenUserSellerGetResponse SellerInforesp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
+            //System.out.println(SellerInforesp.getMsg());
             sellerInfo totalData = sellerInfo.builder()
                     .shopId(SellerInforesp.getData().getSellerId())
                     .shopName(SellerInforesp.getData().getName())

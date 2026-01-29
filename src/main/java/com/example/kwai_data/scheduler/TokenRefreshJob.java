@@ -33,7 +33,7 @@ public class TokenRefreshJob {
      * - fixedRate: 每 12 小时执行一次
      * - initialDelay: 应用启动 1 分钟后首次执行
      */
-    @Scheduled(fixedRate = 12 * 60 * 60 * 1000L, initialDelay = 60_000L)
+    @Scheduled(fixedRate = 24 * 60 * 60 * 1000L, initialDelay = 60_000L)
     public void refreshTokens() {
         log.info("========== 开始定时刷新 Token ==========");
 

@@ -79,11 +79,13 @@ public class sellerInfoService {
             if (r.getPlatformWithdrawNo() == null || r.getPlatformWithdrawNo().isBlank()) continue;
 
             Query q = Query.query(Criteria.where("platformWithdrawNo").is(r.getPlatformWithdrawNo()));
+            Instant t = msToInstant(r.getSuccessTime());
+            Instant t8 = (t == null) ? null : t.plus(Duration.ofHours(8));
 
             Update u = new Update()
                     .set("platformWithdrawNo", r.getPlatformWithdrawNo())
                     .set("withdrawTime", msToInstant(r.getCreateTime()).plus(Duration.ofHours(8)))
-                    .set("receivedTime", msToInstant(r.getSuccessTime()).plus(Duration.ofHours(8)))
+                    .set("receivedTime", t8)
                     .set("state", r.getState())
                     .set("withdrawMoney", r.getWithdrawMoney())
                     .set("failReason", emptyToNull(r.getFailReason()))
