@@ -194,7 +194,8 @@ public class UnsettledOrderService {
     public String extractNextCursor(OpenFundsFinancialStatementListResponse resp) {
         if (resp == null) return null;
 
-        Object data = tryInvoke(resp, "getData");
+        //Object data = tryInvoke(resp, "getData");
+        Object data = resp.getData();
         if (data == null) {
             // 有些 SDK 直接把 cursor 放在 resp 顶层
             String top = firstNonBlank(
@@ -204,12 +205,7 @@ public class UnsettledOrderService {
             return blankToNull(top);
         }
 
-        String next = firstNonBlank(
-                asString(tryInvoke(data, "getNextCursor")),
-                asString(tryInvoke(data, "getNext")),
-                asString(tryInvoke(data, "getNextPageCursor")),
-                asString(tryInvoke(data, "getCursor")) // 有的接口 data.cursor 就是“下一页 cursor”
-        );
+        String next = resp.getData().getCursor();
 
         return blankToNull(next);
     }

@@ -160,13 +160,15 @@ public class OrderCursorListService {
         Instant now = Instant.now();
 
         // 乱序保护：只接受更“新”的平台更新时间
-        Query query = new Query(new Criteria().andOperator(
-                Criteria.where("orderNo").is(incoming.getOrderNo()),
-                new Criteria().orOperator(
-                        Criteria.where("updateTime").exists(false),
-                        Criteria.where("updateTime").lt(platformUpdateTime)
-                )
-        ));
+//        Query query = new Query(new Criteria().andOperator(
+//                Criteria.where("orderNo").is(incoming.getOrderNo()),
+//                new Criteria().orOperator(
+//                        Criteria.where("updateTime").exists(false),
+//                        Criteria.where("updateTime").lt(platformUpdateTime)
+//                )
+//        ));
+        Query query = new Query(Criteria.where("orderNo").is(incoming.getOrderNo()));
+
 
         Update update = new Update()
                 // 仅首次插入写入
@@ -196,7 +198,8 @@ public class OrderCursorListService {
 
 
                 // 成功更新/插入时写入（注意：这里的 updateTime 是平台更新时间）
-                .set("updateTime", incoming.getUpdateTime())
+                .max("updateTime", incoming.getUpdateTime())
+
                 .set("lastIngestedAt", now.plus(Duration.ofHours(8)))
                 .set("orderStatus", incoming.getOrderStatus())
                 .set("refundInitiateTime", incoming.getRefundInitiateTime())

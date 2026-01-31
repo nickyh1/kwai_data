@@ -182,8 +182,6 @@ public class KwaiFacade {
         String cursor = "";
 
         int pageCount = 0;
-        int totalSaved = 0;
-        String lastCursor = cursor;
 
         while (pageCount < maxPages) {
             pageCount++;
@@ -205,12 +203,12 @@ public class KwaiFacade {
 
             for (UnsettledOrderDto dto : records) {
                 unsettledOrderService.upsertOne(dto, shopkey);
-                totalSaved++;
+
             }
 
             // 翻页 cursor
             String nextCursor = unsettledOrderService.extractNextCursor(resp);
-            if (nextCursor == null || nextCursor.isBlank()) {
+            if (nextCursor == null || nextCursor.isBlank() || nextCursor.equals("no_more"))  {
                 break;
             }
 
