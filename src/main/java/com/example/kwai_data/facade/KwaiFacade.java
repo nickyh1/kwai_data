@@ -202,8 +202,11 @@ public class KwaiFacade {
             }
 
             for (UnsettledOrderDto dto : records) {
-                unsettledOrderService.upsertOne(dto, shopkey);
+                // 通过订单详情 API 获取 createTime
+                Instant createTime = unsettledOrderService.fetchOrderCreateTime(shopkey, dto.getOid());
+                dto.setCreateTime(createTime);
 
+                unsettledOrderService.upsertOne(dto, shopkey);
             }
 
             // 翻页 cursor
