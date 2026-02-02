@@ -173,7 +173,7 @@ public class KwaiFacade {
 
 
 
-    public void syncRange(String shopkey) {
+    public void syncRange(String shopkey) throws Exception{
 
 
         int maxPages = 500;
