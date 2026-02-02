@@ -113,7 +113,7 @@ public class KwaiFacade {
 
     private void clearShopCollection(String collectionPrefix, String shopKey) {
         Query all = new Query();
-        erpMongoTemplate.remove(all,collectionPrefix + "_" + shopKey);
+        erpMongoTemplate.remove(all,collectionPrefix  + shopKey);
     }
 
 
