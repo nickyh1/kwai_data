@@ -38,5 +38,8 @@ public class UnsettledOrderDto {
 
     /** 订单创建时间（通过 open.order.detail API 获取） */
     private Instant createTime;
+
+    /** 平台佣金（来自 open.funds.financial.statement.list API） */
+    private BigDecimal platformCommissionAmount;
 }
 

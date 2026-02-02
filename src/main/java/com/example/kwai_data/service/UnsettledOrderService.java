@@ -198,7 +198,8 @@ public class UnsettledOrderService {
                 //.set("unsettleorderStatus", dto.getUnsettleorderStatus())
                 .set("freightWhenNow", dto.getFreightWhenNow())
                 .set("billTime", dto.getBillTime().plus(Duration.ofHours(8)))
-                .set("amount", dto.getAmount());
+                .set("amount", dto.getAmount())
+                .set("platformCommissionAmount", dto.getPlatformCommissionAmount());
 
         // 存入订单创建时间（如果有）
         if (dto.getCreateTime() != null) {
@@ -209,13 +210,17 @@ public class UnsettledOrderService {
     }
 
     private UnsettledOrderDto toDto(com.kuaishou.merchant.open.api.domain.funds.BillStatementDtoShow r) {
-        // amount：先按原值保存（很可能是“分”）。如需存“元”：BigDecimal.valueOf(r.getAmount()).movePointLeft(2)
+        // amount：先按原值保存（很可能是"分"）。如需存"元"：BigDecimal.valueOf(r.getAmount()).movePointLeft(2)
         BigDecimal amount = (r.getAmount() == null) ? null : BigDecimal.valueOf(r.getAmount());
 
         BigDecimal freight = null;
         if (r.getFreightWhenNow() != null && !r.getFreightWhenNow().isBlank()) {
-            freight = new BigDecimal(r.getFreightWhenNow()); // 同理如需“元”，按 movePointLeft(2)
+            freight = new BigDecimal(r.getFreightWhenNow()); // 同理如需"元"，按 movePointLeft(2)
         }
+
+        // 平台佣金
+        BigDecimal platformCommission = (r.getPlatformCommissionAmount() == null)
+                ? null : BigDecimal.valueOf(r.getPlatformCommissionAmount());
 
         Instant billTime = (r.getBillTime() == null) ? null : Instant.ofEpochMilli(r.getBillTime());
         Instant settlementTime = (r.getSettlementTime() == null) ? null : Instant.ofEpochMilli(r.getSettlementTime());
@@ -229,6 +234,7 @@ public class UnsettledOrderService {
                 .freightWhenNow(freight)
                 .billTime(billTime)
                 .amount(amount)
+                .platformCommissionAmount(platformCommission)
                 .build();
     }
 
