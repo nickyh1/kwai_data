@@ -35,5 +35,8 @@ public class UnsettledOrderDto {
 
     /** 金额（订单/待结算金额，具体语义你后续可再细分） */
     private BigDecimal amount;
+
+    /** 订单创建时间（通过 open.order.detail API 获取） */
+    private Instant createTime;
 }
 

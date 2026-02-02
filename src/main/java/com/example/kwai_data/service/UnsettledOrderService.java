@@ -7,7 +7,9 @@ import com.example.kwai_data.data.UnsettledOrderDto;
 import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.request.funds.OpenFundsFinancialStatementListRequest;
+import com.kuaishou.merchant.open.api.request.order.OpenOrderDetailRequest;
 import com.kuaishou.merchant.open.api.response.funds.OpenFundsFinancialStatementListResponse;
+import com.kuaishou.merchant.open.api.response.order.OpenOrderDetailResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -112,6 +114,49 @@ public class UnsettledOrderService {
         return resp;
     }
 
+    /**
+     * 通过 open.order.detail API 获取订单创建时间
+     *
+     * @param shopKey 店铺标识
+     * @param oid     订单号
+     * @return 订单创建时间（毫秒时间戳对应的 Instant）；获取失败返回 null
+     */
+    public Instant fetchOrderCreateTime(String shopKey, String oid) {
+        if (oid == null || oid.isBlank()) {
+            return null;
+        }
+
+        ShopAuth auth = registry.get(shopKey);
+        if (auth == null) {
+            log.warn("fetchOrderCreateTime: 未找到店铺配置: {}", shopKey);
+            return null;
+        }
+
+        AccessTokenKsMerchantClient client = clientFactory.getClient();
+        String accessToken = auth.getAccessToken();
+
+        OpenOrderDetailRequest req = new OpenOrderDetailRequest();
+        req.setAccessToken(accessToken);
+        req.setApiMethodVersion(1L);
+        req.setOid(Long.parseLong(oid));
+
+        try {
+            OpenOrderDetailResponse resp = client.execute(req);
+            if (resp == null || resp.getData() == null) {
+                log.warn("fetchOrderCreateTime: 订单详情返回为空, oid={}", oid);
+                return null;
+            }
+            Long createTimeMs = resp.getData().getCreateTime();
+            if (createTimeMs == null) {
+                return null;
+            }
+            return Instant.ofEpochMilli(createTimeMs);
+        } catch (Exception e) {
+            log.error("fetchOrderCreateTime: 获取订单详情失败, oid={}", oid, e);
+            return null;
+        }
+    }
+
     public List<UnsettledOrderDto> parseRecords(OpenFundsFinancialStatementListResponse resp) {
         if (resp == null ) return Collections.emptyList();
 
@@ -154,6 +199,11 @@ public class UnsettledOrderService {
                 .set("freightWhenNow", dto.getFreightWhenNow())
                 .set("billTime", dto.getBillTime().plus(Duration.ofHours(8)))
                 .set("amount", dto.getAmount());
+
+        // 存入订单创建时间（如果有）
+        if (dto.getCreateTime() != null) {
+            u.set("createTime", dto.getCreateTime().plus(Duration.ofHours(8)));
+        }
 
         mongoTemplate.upsert(q, u, collection);
     }
