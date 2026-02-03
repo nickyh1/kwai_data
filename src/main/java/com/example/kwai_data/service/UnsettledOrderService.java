@@ -140,14 +140,13 @@ public class UnsettledOrderService {
         req.setApiMethodVersion(1L);
         req.setOid(Long.parseLong(oid));
 
-        int maxRetries = 3;
+        int maxRetries = 5;
         for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
                 OpenOrderDetailResponse resp = client.execute(req);
                 if (resp == null || resp.getData() == null) {
                     System.out.println("fetchOrderCreateTime: 订单详情返回为空, oid=" + oid);
-                    System.out.println("msg: " + (resp != null ? resp.getMsg() : "null"));
-                    System.out.println("code: " + (resp != null ? resp.getCode() : "null"));
+
 
                     // 重试
                     if (attempt < maxRetries) {
@@ -157,7 +156,7 @@ public class UnsettledOrderService {
                     }
                     return null;
                 }
-                Long createTimeMs = resp.getData().getCreateTime();
+                Long createTimeMs = resp.getData().getOrderBaseInfo().getCreateTime();
                 if (createTimeMs == null) {
                     return null;
                 }
@@ -240,8 +239,8 @@ public class UnsettledOrderService {
         }
 
         // 平台佣金
-        BigDecimal platformCommission = (r.getPlatformCommissionAmount() == null)
-                ? null : BigDecimal.valueOf(r.getPlatformCommissionAmount());
+        BigDecimal platformCommission = (r.getPlatformAmount() == null)
+                ? null : BigDecimal.valueOf(r.getPlatformAmount());
 
         Instant billTime = (r.getBillTime() == null) ? null : Instant.ofEpochMilli(r.getBillTime());
         Instant settlementTime = (r.getSettlementTime() == null) ? null : Instant.ofEpochMilli(r.getSettlementTime());
