@@ -128,7 +128,7 @@ public class UnsettledOrderService {
 
         ShopAuth auth = registry.get(shopKey);
         if (auth == null) {
-            log.warn("fetchOrderCreateTime: 未找到店铺配置: {}", shopKey);
+            System.out.println("fetchOrderCreateTime: 未找到店铺配置: {}"+ shopKey);
             return null;
         }
 
@@ -143,16 +143,16 @@ public class UnsettledOrderService {
         try {
             OpenOrderDetailResponse resp = client.execute(req);
             if (resp == null || resp.getData() == null) {
-                log.warn("fetchOrderCreateTime: 订单详情返回为空, oid={}", oid);
+                System.out.println("fetchOrderCreateTime: 订单详情返回为空, oid={}"+oid);
                 return null;
             }
-            Long createTimeMs = resp.getData().getCreateTime();
+            Long createTimeMs = resp.getData().getOrderBaseInfo().getCreateTime();
             if (createTimeMs == null) {
                 return null;
             }
             return Instant.ofEpochMilli(createTimeMs);
         } catch (Exception e) {
-            log.error("fetchOrderCreateTime: 获取订单详情失败, oid={}", oid, e);
+            System.out.println("fetchOrderCreateTime: 获取订单详情失败, oid={}"+ oid+ e);
             return null;
         }
     }
@@ -219,8 +219,8 @@ public class UnsettledOrderService {
         }
 
         // 平台佣金
-        BigDecimal platformCommission = (r.getPlatformCommissionAmount() == null)
-                ? null : BigDecimal.valueOf(r.getPlatformCommissionAmount());
+        BigDecimal platformCommission = (r.getPlatformAmount() == null)
+                ? null : BigDecimal.valueOf(r.getPlatformAmount());
 
         Instant billTime = (r.getBillTime() == null) ? null : Instant.ofEpochMilli(r.getBillTime());
         Instant settlementTime = (r.getSettlementTime() == null) ? null : Instant.ofEpochMilli(r.getSettlementTime());

@@ -148,7 +148,7 @@ public class KwaiFacade {
             System.out.println("\n");
             System.out.println(TimeUtil.toZonedDateTime(r.getStartMs(), "Asia/Shanghai")
                     +" "+TimeUtil.toZonedDateTime(r.getEndMs(), "Asia/Shanghai"));
-            Thread.sleep(1000);
+            Thread.sleep(500);
             // 1) 提取订单列表（按实际结构改）
             OrderList orderlist[] = orderCursorListService.extractOrderList(resp);
 
@@ -192,6 +192,7 @@ public class KwaiFacade {
                     range.getEndMs(),
                     cursor
             );
+            Thread.sleep(100);
             System.out.println(pageCount+" "+cursor);
             // 从 response 转 DTO records（如果你想把这段放回 service，也可以）
             List<UnsettledOrderDto> records = unsettledOrderService.parseRecords(resp);
@@ -203,6 +204,7 @@ public class KwaiFacade {
 
             for (UnsettledOrderDto dto : records) {
                 // 通过订单详情 API 获取 createTime
+                Thread.sleep(300);
                 Instant createTime = unsettledOrderService.fetchOrderCreateTime(shopkey, dto.getOid());
                 dto.setCreateTime(createTime);
 
