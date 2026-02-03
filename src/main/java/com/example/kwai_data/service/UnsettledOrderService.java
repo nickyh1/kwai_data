@@ -128,7 +128,7 @@ public class UnsettledOrderService {
 
         ShopAuth auth = registry.get(shopKey);
         if (auth == null) {
-            log.warn("fetchOrderCreateTime: 未找到店铺配置: {}", shopKey);
+            System.out.println("fetchOrderCreateTime: 未找到店铺配置: " + shopKey);
             return null;
         }
 
@@ -140,21 +140,42 @@ public class UnsettledOrderService {
         req.setApiMethodVersion(1L);
         req.setOid(Long.parseLong(oid));
 
-        try {
-            OpenOrderDetailResponse resp = client.execute(req);
-            if (resp == null || resp.getData() == null) {
-                log.warn("fetchOrderCreateTime: 订单详情返回为空, oid={}", oid);
-                return null;
+        int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                OpenOrderDetailResponse resp = client.execute(req);
+                if (resp == null || resp.getData() == null) {
+                    System.out.println("fetchOrderCreateTime: 订单详情返回为空, oid=" + oid);
+                    System.out.println("msg: " + (resp != null ? resp.getMsg() : "null"));
+                    System.out.println("code: " + (resp != null ? resp.getCode() : "null"));
+
+                    // 重试
+                    if (attempt < maxRetries) {
+                        System.out.println("第 " + attempt + " 次请求失败，准备重试...");
+                        Thread.sleep(1000 * attempt); // 递增等待
+                        continue;
+                    }
+                    return null;
+                }
+                Long createTimeMs = resp.getData().getCreateTime();
+                if (createTimeMs == null) {
+                    return null;
+                }
+                return Instant.ofEpochMilli(createTimeMs);
+            } catch (Exception e) {
+                System.out.println("fetchOrderCreateTime: 获取订单详情失败, oid=" + oid + ", attempt=" + attempt);
+                e.printStackTrace();
+                if (attempt < maxRetries) {
+                    try {
+                        Thread.sleep(1000 * attempt);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        return null;
+                    }
+                }
             }
-            Long createTimeMs = resp.getData().getCreateTime();
-            if (createTimeMs == null) {
-                return null;
-            }
-            return Instant.ofEpochMilli(createTimeMs);
-        } catch (Exception e) {
-            log.error("fetchOrderCreateTime: 获取订单详情失败, oid={}", oid, e);
-            return null;
         }
+        return null;
     }
 
     public List<UnsettledOrderDto> parseRecords(OpenFundsFinancialStatementListResponse resp) {
