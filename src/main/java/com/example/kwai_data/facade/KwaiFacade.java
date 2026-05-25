@@ -242,11 +242,8 @@ public class KwaiFacade {
             List<UnsettledOrderDto> records = unsettledOrderService.parseRecords(resp);
             if (records == null || records.isEmpty()) break;
 
-            for (UnsettledOrderDto dto : records) {
-                Instant createTime = unsettledOrderService.fetchOrderCreateTime(shopKey, dto.getOid());
-                dto.setCreateTime(createTime);
-                unsettledOrderService.upsertOne(dto, shopKey);
-            }
+            int saved = unsettledOrderService.upsertBatch(records, shopKey);
+            log.debug("[{}] 未结算订单第 {} 页写入 {} 条", shopKey, pageCount, saved);
 
             String nextCursor = unsettledOrderService.extractNextCursor(resp);
             if (nextCursor == null || nextCursor.isBlank()

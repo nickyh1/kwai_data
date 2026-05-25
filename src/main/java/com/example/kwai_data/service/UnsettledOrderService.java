@@ -1,14 +1,12 @@
 package com.example.kwai_data.service;
 
-import com.example.kwai_data.client.KwaiClientFactory;
 import com.example.kwai_data.domain.ShopAuth;
 import com.example.kwai_data.dto.UnsettledOrderDto;
 import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
+import com.example.kwai_data.client.KwaiClientFactory;
 import com.kuaishou.merchant.open.api.request.funds.OpenFundsFinancialStatementListRequest;
-import com.kuaishou.merchant.open.api.request.order.OpenOrderDetailRequest;
 import com.kuaishou.merchant.open.api.response.funds.OpenFundsFinancialStatementListResponse;
-import com.kuaishou.merchant.open.api.response.order.OpenOrderDetailResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,9 +17,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -82,34 +78,91 @@ public class UnsettledOrderService {
         }
     }
 
-    public Instant fetchOrderCreateTime(String shopKey, String oid) {
-        if (oid == null || oid.isBlank()) return null;
-        ShopAuth auth = registry.get(shopKey);
-        if (auth == null) { log.warn("fetchOrderCreateTime: 未找到店铺配置: {}", shopKey); return null; }
+    /**
+     * 批量写入一页未结算订单，消除 N+1。
+     *
+     * <p>create_time 来源（按优先级）：
+     * <ol>
+     *   <li>dto 自带（已设置）</li>
+     *   <li>本地 {@code orders} 表批量查询（1 次 SQL，替代原来每条 1 次 API 调用）</li>
+     *   <li>null — UPSERT 中 {@code COALESCE(create_time, VALUES(create_time))} 保留已有值；
+     *       全新行暂为 null，下次同步时 orders 表已有数据后自动补全</li>
+     * </ol>
+     */
+    public int upsertBatch(List<UnsettledOrderDto> dtos, String shopKey) {
+        if (dtos == null || dtos.isEmpty()) return 0;
 
-        AccessTokenKsMerchantClient client = clientFactory.getClient();
-        OpenOrderDetailRequest req = new OpenOrderDetailRequest();
-        req.setAccessToken(auth.getAccessToken());
-        req.setApiMethodVersion(1L);
-        req.setOid(Long.parseLong(oid));
+        // 1. 收集尚无 create_time 的 OID
+        List<String> missingOids = dtos.stream()
+                .filter(d -> d != null && d.getOid() != null && !d.getOid().isBlank()
+                        && d.getCreateTime() == null)
+                .map(UnsettledOrderDto::getOid)
+                .distinct()
+                .collect(Collectors.toList());
 
-        for (int attempt = 1; attempt <= 5; attempt++) {
-            try {
-                OpenOrderDetailResponse resp = client.execute(req);
-                if (resp == null || resp.getData() == null) {
-                    if (attempt < 5) { Thread.sleep(1000L * attempt); continue; }
-                    return null;
-                }
-                Long createTimeMs = resp.getData().getOrderBaseInfo().getCreateTime();
-                return createTimeMs == null ? null : Instant.ofEpochMilli(createTimeMs);
-            } catch (Exception e) {
-                log.warn("fetchOrderCreateTime failed, oid={}, attempt={}: {}", oid, attempt, e.getMessage());
-                if (attempt < 5) {
-                    try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); return null; }
-                }
-            }
+        // 2. 一次 SQL 批量查询 orders 表（替代 N 次 API 调用）
+        Map<String, Instant> createTimeByOid = missingOids.isEmpty()
+                ? Collections.emptyMap()
+                : batchLookupCreateTimes(shopKey, missingOids);
+
+        if (!createTimeByOid.isEmpty()) {
+            log.debug("[{}] 从 orders 表批量查得 create_time：命中 {}/{} 条",
+                    shopKey, createTimeByOid.size(), missingOids.size());
         }
-        return null;
+
+        // 3. 组装批量参数
+        List<Object[]> batchArgs = new ArrayList<>(dtos.size());
+        for (UnsettledOrderDto dto : dtos) {
+            if (dto == null || dto.getOid() == null || dto.getOid().isBlank()) continue;
+
+            Instant createTime = dto.getCreateTime() != null
+                    ? dto.getCreateTime()
+                    : createTimeByOid.get(dto.getOid()); // may still be null → COALESCE handles it
+
+            batchArgs.add(new Object[]{
+                    shopKey,
+                    dto.getOid(),
+                    dto.getOrderStatus(),
+                    dto.getSettlementStatus(),
+                    toTs(shift8(dto.getSettlementTime())),
+                    dto.getFreightWhenNow(),
+                    toTs(shift8(dto.getBillTime())),
+                    dto.getAmount(),
+                    dto.getPlatformCommissionAmount(),
+                    toTs(shift8(createTime))
+            });
+        }
+
+        if (batchArgs.isEmpty()) return 0;
+        jdbcTemplate.batchUpdate(UPSERT_SQL, batchArgs);
+        return batchArgs.size();
+    }
+
+    /**
+     * 从本地 {@code orders} 表批量查询 create_time。
+     *
+     * <p>orders.create_time 存储时已做 UTC→UTC+8 偏移；
+     * 取回时减去 8h 还原为 UTC，与 {@link UnsettledOrderDto#getCreateTime()} 约定一致。
+     */
+    private Map<String, Instant> batchLookupCreateTimes(String shopKey, List<String> oids) {
+        String placeholders = oids.stream().map(s -> "?").collect(Collectors.joining(","));
+        String sql = "SELECT order_no, create_time FROM orders " +
+                "WHERE shop_key = ? AND order_no IN (" + placeholders + ") " +
+                "AND create_time IS NOT NULL";
+
+        Object[] params = new Object[1 + oids.size()];
+        params[0] = shopKey;
+        for (int i = 0; i < oids.size(); i++) params[i + 1] = oids.get(i);
+
+        Map<String, Instant> result = new HashMap<>();
+        jdbcTemplate.query(sql, params, rs -> {
+            Timestamp ts = rs.getTimestamp("create_time");
+            if (ts != null) {
+                // orders 存储的是 UTC+8 偏移值 → 减 8h 还原为 UTC
+                result.put(rs.getString("order_no"), ts.toInstant().minus(Duration.ofHours(8)));
+            }
+        });
+        return result;
     }
 
     public List<UnsettledOrderDto> parseRecords(OpenFundsFinancialStatementListResponse resp) {
@@ -121,25 +174,21 @@ public class UnsettledOrderService {
                 .collect(Collectors.toList());
     }
 
+    /** 单条写入（供兼容/测试用）。批量同步请使用 {@link #upsertBatch}。 */
     public void upsertOne(UnsettledOrderDto dto, String shopKey) {
         if (dto == null) return;
         if (dto.getOid() == null || dto.getOid().isBlank()) throw new IllegalArgumentException("oid is required");
-
-        Instant settlementTime = dto.getSettlementTime() == null ? null : dto.getSettlementTime().plus(Duration.ofHours(8));
-        Instant billTime       = dto.getBillTime()       == null ? null : dto.getBillTime().plus(Duration.ofHours(8));
-        Instant createTime     = dto.getCreateTime()     == null ? null : dto.getCreateTime().plus(Duration.ofHours(8));
-
         jdbcTemplate.update(UPSERT_SQL,
                 shopKey,
                 dto.getOid(),
                 dto.getOrderStatus(),
                 dto.getSettlementStatus(),
-                toTs(settlementTime),
+                toTs(shift8(dto.getSettlementTime())),
                 dto.getFreightWhenNow(),
-                toTs(billTime),
+                toTs(shift8(dto.getBillTime())),
                 dto.getAmount(),
                 dto.getPlatformCommissionAmount(),
-                toTs(createTime)
+                toTs(shift8(dto.getCreateTime()))
         );
     }
 
@@ -179,6 +228,7 @@ public class UnsettledOrderService {
     }
 
     private static Timestamp toTs(Instant instant) { return instant == null ? null : Timestamp.from(instant); }
+    private static Instant   shift8(Instant t)     { return t == null ? null : t.plus(Duration.ofHours(8)); }
     private static Object tryInvoke(Object target, String methodName) {
         try { Method m = target.getClass().getMethod(methodName); return m.invoke(target); } catch (Exception ignored) { return null; }
     }
