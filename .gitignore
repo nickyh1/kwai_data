@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### 敏感配置（不提交到 git）###
+.env
+config/application.yml
+config/application-prod.yml

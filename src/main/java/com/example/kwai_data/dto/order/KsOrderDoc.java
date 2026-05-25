@@ -1,20 +1,24 @@
 package com.example.kwai_data.dto.order;
 
+import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
+/**
+ * 快手结算订单文档（保留结构，暂未使用）
+ */
+@Entity
+@Table(name = "ks_orders")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document("ks_orders")
 public class KsOrderDoc {
 
     @Id
+    @Column(name = "id", length = 64)
     private String id;              // = orderNo
 
     private Long orderNo;
@@ -29,15 +33,12 @@ public class KsOrderDoc {
     private String settlementStatus;
     private String settlementRule;
 
-    // 原始时间戳（毫秒）
     private Long orderCreateTimeMs;
     private Long settlementTimeMs;
 
-    // 可选：同时存 Instant 便于后续查询/聚合
     private Instant orderCreateTime;
     private Instant settlementTime;
 
-    // 金额：由于单位/口径未完全确定，提供 BigDecimal（可按你的业务再统一为“分”Long）
     private BigDecimal totalIncome;
     private BigDecimal actualPayAmount;
     private BigDecimal settlementAmount;
@@ -54,8 +55,6 @@ public class KsOrderDoc {
 
     private String collectMode;
 
-    // 追溯字段（强烈建议保留）
-    private String requestId;       // 来自顶层 response，便于排查链路
-    private Instant ingestedAt;     // 入库时间
+    private String requestId;
+    private Instant ingestedAt;
 }
-

@@ -1,51 +1,52 @@
 package com.example.kwai_data.data;
 
-
-
+import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@Entity
+@Table(name = "unsettled_orders", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_shop_oid", columnNames = {"shop_key", "oid"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Document(collection = "unsettled_orders")
 public class UnsettledOrderDoc {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    /** 订单ID（强烈建议唯一） */
-    @Indexed(unique = true)
+    @Column(name = "shop_key", nullable = false, length = 64)
+    private String shopKey;
+
+    @Column(name = "oid", nullable = false, length = 64)
     private String oid;
 
-    @Indexed
+    @Column(name = "order_status", length = 16)
     private String orderStatus;
 
-    @Indexed
+    @Column(name = "settlement_status", length = 16)
     private String settlementStatus;
 
-    @Indexed
+    @Column(name = "settlement_time")
     private Instant settlementTime;
 
-//    @Indexed
-//    private String unsettleorderStatus;
-
+    @Column(name = "freight_when_now", precision = 12, scale = 2)
     private BigDecimal freightWhenNow;
 
-    @Indexed
+    @Column(name = "bill_time")
     private Instant billTime;
 
+    @Column(name = "amount", precision = 12, scale = 2)
     private BigDecimal amount;
 
-    /** 可选：用于乱序保护/幂等更新（如果你需要） */
-    // @Indexed
-    // private Instant updateTime;
-}
+    @Column(name = "platform_commission_amount", precision = 12, scale = 2)
+    private BigDecimal platformCommissionAmount;
 
+    @Column(name = "create_time")
+    private Instant createTime;
+}

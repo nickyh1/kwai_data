@@ -1,33 +1,47 @@
 package com.example.kwai_data.data;
 
-
+import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
-import java.math.BigDecimal;
 import java.time.Instant;
 
+@Entity
+@Table(name = "withdraw_records", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_shop_withdraw_no", columnNames = {"shop_key", "platform_withdraw_no"})
+})
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document("withdraw_info")
 public class WithdrawInfoDoc {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    /** 提现时间 */
+    @Column(name = "shop_key", nullable = false, length = 64)
+    private String shopKey;
+
+    @Column(name = "platform_withdraw_no", nullable = false, length = 64)
+    private String platformWithdrawNo;
+
+    @Column(name = "withdraw_time")
     private Instant withdrawTime;
 
-    /** 提现状态 */
-    private String status;
-
-    /** 提现金额 */
-    private BigDecimal amount;
-
-    /** 到账时间 */
+    @Column(name = "received_time")
     private Instant receivedTime;
-}
 
+    @Column(name = "state", length = 16)
+    private String state;
+
+    @Column(name = "withdraw_money")
+    private Long withdrawMoney;
+
+    @Column(name = "fail_reason", length = 256)
+    private String failReason;
+
+    @Column(name = "withdraw_desc", length = 256)
+    private String withdrawDesc;
+
+    @Column(name = "update_time")
+    private Instant updateTime;
+}

@@ -1,53 +1,53 @@
 package com.example.kwai_data.service;
 
-
-
-import com.example.kwai_data.KwaiDataApplication;
 import com.example.kwai_data.client.KwaiClientFactory;
-import com.example.kwai_data.config.KwaiProperties;
 import com.example.kwai_data.data.OrderDto;
-import com.example.kwai_data.data.Order_Doc;
 import com.example.kwai_data.data.ShopAuth;
-import com.example.kwai_data.repository.OrderRepository;
-import com.example.kwai_data.mapper.OrderMapper;
 import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
 import com.kuaishou.merchant.open.api.request.order.OpenOrderCursorListRequest;
 import com.kuaishou.merchant.open.api.response.order.OpenOrderCursorListResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.BulkOperations;
-import org.springframework.data.mongodb.core.FindAndModifyOptions;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import java.awt.*;
-import java.awt.image.Kernel;
-import java.time.Duration;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.*;
-import java.util.List;
 import java.util.stream.Collectors;
-
-import static org.springframework.data.mongodb.core.query.Criteria.where;
 
 @Service
 @RequiredArgsConstructor
 public class OrderCursorListService {
 
-    //private final AccessTokenKsMerchantClient client;
-    //private final KwaiProperties props;
-    private final MongoTemplate mongoTemplate;
+    private final JdbcTemplate jdbcTemplate;
     private final ShopAuthRegistry registry;
     private final KwaiClientFactory clientFactory;
 
+    // INSERT ... ON DUPLICATE KEY UPDATE
+    // - Immutable fields: NOT in UPDATE clause (set only on first insert via INSERT columns)
+    // - Mutable fields: always updated
+    // - update_time: GREATEST for out-of-order protection
+    private static final String UPSERT_SQL = """
+            INSERT INTO orders
+                (shop_key, order_no, order_status, pay_time, freight, promotion_discount,
+                 sub_order_total_price, ship_time, refund_initiate_time, create_time, update_time,
+                 distribution_type, receive_time, pay_type, ks_sku_id, product_id, product_name,
+                 sku_quantity, unit_price_before_promo_snapshot, discount_amount, unit_price_snapshot,
+                 has_refund, refund_status, handling_way, last_ingested_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                order_status         = VALUES(order_status),
+                refund_initiate_time = VALUES(refund_initiate_time),
+                receive_time         = VALUES(receive_time),
+                has_refund           = VALUES(has_refund),
+                refund_status        = VALUES(refund_status),
+                handling_way         = VALUES(handling_way),
+                last_ingested_at     = VALUES(last_ingested_at),
+                update_time          = GREATEST(COALESCE(update_time, '1970-01-01 00:00:00.000'), VALUES(update_time))
+            """;
 
-    /**
-     * 单次拉取（对应 demo）
-     */
     public OpenOrderCursorListResponse fetchOnce(
             String shopKey,
             Integer orderViewStatus,
@@ -58,7 +58,6 @@ public class OrderCursorListService {
             Long endTime,
             Integer cpsType,
             String cursor
-
     ) throws Exception {
         ShopAuth auth = registry.get(shopKey);
         if (auth == null) {
@@ -66,12 +65,10 @@ public class OrderCursorListService {
         }
 
         AccessTokenKsMerchantClient client = clientFactory.getClient();
-
         OpenOrderCursorListRequest request = new OpenOrderCursorListRequest();
         request.setAccessToken(auth.getAccessToken());
         request.setApiMethodVersion(1L);
 
-        // 可选参数保持原逻辑
         if (orderViewStatus != null) request.setOrderViewStatus(orderViewStatus);
         if (pageSize != null) request.setPageSize(pageSize);
         if (sort != null) request.setSort(sort);
@@ -84,13 +81,6 @@ public class OrderCursorListService {
         return client.execute(request);
     }
 
-    /**
-     * 拉取全部（自动翻页）
-     *
-     * 说明：
-     * - pageSize 建议你按接口上限设置
-     * - cursor 初始可传 null（从第一页开始）
-     */
     public List<OpenOrderCursorListResponse> fetchAllPages(
             String shopKey,
             Integer orderViewStatus,
@@ -103,256 +93,86 @@ public class OrderCursorListService {
             String initialCursor,
             int maxPages
     ) throws Exception {
-
         List<OpenOrderCursorListResponse> pages = new ArrayList<>();
         String cursor = initialCursor;
 
         for (int i = 0; i < maxPages; i++) {
             OpenOrderCursorListResponse resp = fetchOnce(
-                    shopKey ,orderViewStatus, pageSize, sort, queryType, beginTime, endTime, cpsType, cursor
+                    shopKey, orderViewStatus, pageSize, sort, queryType, beginTime, endTime, cpsType, cursor
             );
             pages.add(resp);
 
-            // ====== 下面这一段：你需要根据真实 response 结构确认 nextCursor 字段路径 ======
             String nextCursor = extractNextCursor(resp);
-
-            // 如果没有下一页，退出
-            if (nextCursor == null || nextCursor.isBlank() || nextCursor.equals(cursor)) {
-                break;
-            }
+            if (nextCursor == null || nextCursor.isBlank() || nextCursor.equals(cursor)) break;
             cursor = nextCursor;
         }
-
         return pages;
     }
 
     /**
-     * 单条幂等写入：存在则更新，不存在则插入
-     */
-//    public Order_Doc upsertOne(OrderDto dto) {
-//        if (dto == null) return null;
-//        Order_Doc doc = OrderMapper.toDocument(dto);
-//
-//        // 如果已存在 orderNo，复用其 _id，这样 repository.save() 就是 update
-//        orderRepository.findByOrderNo(doc.getOrderNo())
-//                .ifPresent(exist -> doc.setId(exist.getId()));
-//
-//        return orderRepository.save(doc);
-//    }
-
-    public Order_Doc upsertOne(OrderDto dto, String shopKey) {
-        if (dto == null) return null;
-
-        String collection = orderCollection(shopKey);
-
-        Order_Doc incoming = OrderMapper.toDocument(dto);
-        if (incoming.getOrderNo() == null || incoming.getOrderNo().isBlank()) {
-            throw new IllegalArgumentException("orderNo is required for upsert");
-        }
-
-        // 平台更新时间：建议你在 DTO 里明确一个字段，比如 dto.getUpdateTime()/getPlatformUpdateTime()
-        Instant platformUpdateTime = incoming.getUpdateTime();
-        if (platformUpdateTime == null) {
-            // 不建议默认 now()；更建议强制上游提供平台更新时间，否则无法做乱序保护
-            throw new IllegalArgumentException("platform updateTime is required for out-of-order protection");
-        }
-
-        Instant now = Instant.now();
-
-        // 乱序保护：只接受更“新”的平台更新时间
-//        Query query = new Query(new Criteria().andOperator(
-//                Criteria.where("orderNo").is(incoming.getOrderNo()),
-//                new Criteria().orOperator(
-//                        Criteria.where("updateTime").exists(false),
-//                        Criteria.where("updateTime").lt(platformUpdateTime)
-//                )
-//        ));
-        Query query = new Query(Criteria.where("orderNo").is(incoming.getOrderNo()));
-
-
-        Update update = new Update()
-                // 仅首次插入写入
-                .setOnInsert("orderNo", incoming.getOrderNo())
-                .setOnInsert("payTime", incoming.getPayTime())
-                .setOnInsert("freight", incoming.getFreight())
-                .setOnInsert("promotionDiscount", incoming.getPromotionDiscount())
-                .setOnInsert("subOrderTotalPrice", incoming.getSubOrderTotalPrice())
-                .setOnInsert("shipTime", incoming.getShipTime())
-                //.setOnInsert("orderStatus", incoming.getOrderStatus())//
-                //.setOnInsert("refundInitiateTime", incoming.getRefundInitiateTime())//
-                .setOnInsert("createTime", incoming.getCreateTime())
-                //.setOnInsert("updateTime", incoming.getUpdateTime())//
-                .setOnInsert("distributionType",  incoming.getDistributionType())
-                //.setOnInsert("receiveTime", incoming.getReceiveTime())//
-                .setOnInsert("payType", incoming.getPayType())
-                .setOnInsert("ksSkuId", incoming.getKsSkuId())
-                .setOnInsert("productId", incoming.getProductId())
-                .setOnInsert("productName", incoming.getProductName())
-                .setOnInsert("skuQuantity", incoming.getSkuQuantity())
-                .setOnInsert("unitPriceBeforePromoSnapshot", incoming.getUnitPriceBeforePromoSnapshot())
-                .setOnInsert("discountAmount",  incoming.getDiscountAmount())
-                .setOnInsert("unitPriceSnapshot",  incoming.getUnitPriceSnapshot())
-                //.setOnInsert("hasRefund", incoming.getHasRefund()) //
-                //.setOnInsert("refundStatus", incoming.getRefundStatus()) //
-                //.setOnInsert("handlingWay", incoming.getHandlingWay())  //
-
-
-                // 成功更新/插入时写入（注意：这里的 updateTime 是平台更新时间）
-                .max("updateTime", incoming.getUpdateTime())
-
-                .set("lastIngestedAt", now.plus(Duration.ofHours(8)))
-                .set("orderStatus", incoming.getOrderStatus())
-                .set("refundInitiateTime", incoming.getRefundInitiateTime())
-                .set("receiveTime", incoming.getReceiveTime())
-                .set("hasRefund", incoming.getHasRefund())
-                .set("refundStatus", incoming.getRefundStatus())
-                .set("handlingWay", incoming.getHandlingWay());
-
-
-
-        // 把业务字段写入（根据你的 Order_Doc 字段补齐）
-        // 这里给你示例几项：你按实际字段继续 set(...)
-
-
-        // ... 继续把你需要的字段 set 进去（不要 set null，避免把已有值抹掉）
-
-        FindAndModifyOptions options = FindAndModifyOptions.options()
-                .upsert(true)
-                .returnNew(true);
-
-
-        Order_Doc updated = mongoTemplate.findAndModify(query, update, options, Order_Doc.class, collection);
-        //Order_Doc updated = mongoTemplate.findAndModify(query, update, options, Order_Doc.class);
-
-        // 如果 updated == null，说明本次是“旧 updateTime”的乱序数据，被保护条件拦下了；
-        // 可选择返回库里现有版本（更符合调用方预期）
-        if (updated == null) {
-            Query q2 = new Query(Criteria.where("orderNo").is(incoming.getOrderNo()));
-            return mongoTemplate.findOne(q2, Order_Doc.class, collection);
-        }
-        return updated;
-    }
-
-
-    /**
-     * 批量幂等写入：按 orderNo 去重并 bulk upsert 到指定店铺集合。
-     * 字段策略与 upsertOne 保持一致：
-     *   - setOnInsert：不可变字段（只在首次插入时写）
-     *   - set / max：可变字段（每次同步都更新）
-     *
-     * @return 本次实际处理的去重后 doc 数量
+     * 批量幂等写入：整页 DTOs 一次性 BulkWrite 到 orders 表
+     * - setOnInsert 效果通过 ON DUPLICATE KEY UPDATE 不包含不可变字段实现
+     * - update_time 用 GREATEST 做乱序保护
      */
     public int upsertBatch(List<OrderDto> dtos, String shopKey) {
         if (dtos == null || dtos.isEmpty()) return 0;
 
-        String collection = orderCollection(shopKey);
-
-        // 1) dto -> doc，过滤无效数据
-        List<Order_Doc> docs = dtos.stream()
-                .filter(Objects::nonNull)
-                .map(OrderMapper::toDocument)
-                .filter(d -> d.getOrderNo() != null && !d.getOrderNo().isBlank())
-                .filter(d -> d.getUpdateTime() != null)   // updateTime 必须有，否则无法做 .max()
-                .collect(Collectors.toList());
-
-        if (docs.isEmpty()) return 0;
-
-        // 2) 按 orderNo 去重（同一批里可能有重复，保留最后一条）
-        Map<String, Order_Doc> unique = new LinkedHashMap<>();
-        for (Order_Doc d : docs) unique.put(d.getOrderNo(), d);
-        List<Order_Doc> uniqueDocs = new ArrayList<>(unique.values());
-
         Instant now = Instant.now();
 
-        // 3) 构建 bulk upsert，写入动态集合
-        BulkOperations ops = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, collection);
-
-        for (Order_Doc incoming : uniqueDocs) {
-            Query q = new Query(Criteria.where("orderNo").is(incoming.getOrderNo()));
-
-            Update u = new Update()
-                    // ── 不可变字段：仅首次插入时写入 ──────────────────────────
-                    .setOnInsert("orderNo",                     incoming.getOrderNo())
-                    .setOnInsert("payTime",                     incoming.getPayTime())
-                    .setOnInsert("freight",                     incoming.getFreight())
-                    .setOnInsert("promotionDiscount",           incoming.getPromotionDiscount())
-                    .setOnInsert("subOrderTotalPrice",          incoming.getSubOrderTotalPrice())
-                    .setOnInsert("shipTime",                    incoming.getShipTime())
-                    .setOnInsert("createTime",                  incoming.getCreateTime())
-                    .setOnInsert("distributionType",            incoming.getDistributionType())
-                    .setOnInsert("payType",                     incoming.getPayType())
-                    .setOnInsert("ksSkuId",                     incoming.getKsSkuId())
-                    .setOnInsert("productId",                   incoming.getProductId())
-                    .setOnInsert("productName",                 incoming.getProductName())
-                    .setOnInsert("skuQuantity",                 incoming.getSkuQuantity())
-                    .setOnInsert("unitPriceBeforePromoSnapshot",incoming.getUnitPriceBeforePromoSnapshot())
-                    .setOnInsert("discountAmount",              incoming.getDiscountAmount())
-                    .setOnInsert("unitPriceSnapshot",           incoming.getUnitPriceSnapshot())
-                    // ── 可变字段：每次同步都更新 ──────────────────────────────
-                    .max("updateTime",          incoming.getUpdateTime())   // 只接受更新的时间（乱序保护）
-                    .set("lastIngestedAt",      now.plus(Duration.ofHours(8)))
-                    .set("orderStatus",         incoming.getOrderStatus())
-                    .set("refundInitiateTime",  incoming.getRefundInitiateTime())
-                    .set("receiveTime",         incoming.getReceiveTime())
-                    .set("hasRefund",           incoming.getHasRefund())
-                    .set("refundStatus",        incoming.getRefundStatus())
-                    .set("handlingWay",         incoming.getHandlingWay());
-
-            ops.upsert(q, u);
+        // 去重（同页内可能有重复 orderNo，保留最后一条）
+        Map<String, OrderDto> unique = new LinkedHashMap<>();
+        for (OrderDto dto : dtos) {
+            if (dto == null) continue;
+            if (dto.getOrderNo() == null || dto.getOrderNo().isBlank()) continue;
+            if (dto.getUpdateTime() == null) continue;   // updateTime 必须有
+            unique.put(dto.getOrderNo(), dto);
         }
+        if (unique.isEmpty()) return 0;
 
-        ops.execute();
-        return uniqueDocs.size();
+        List<Object[]> batchArgs = unique.values().stream()
+                .map(dto -> toParams(dto, shopKey, now))
+                .collect(Collectors.toList());
+
+        jdbcTemplate.batchUpdate(UPSERT_SQL, batchArgs);
+        return batchArgs.size();
     }
 
-    private String orderCollection(String shopKey) {
-        if (shopKey == null || shopKey.isBlank()) throw new IllegalArgumentException("shopKey is required");
-        // 强烈建议限制字符，避免注入/脏命名
-        //if (!shopKey.matches("[a-zA-Z0-9_a-zA-Z0-9]+")) throw new IllegalArgumentException("invalid shopKey");
-        return "orders_" + shopKey; // orders_shop01
+    /** 单条写入（供兼容/测试用） */
+    public void upsertOne(OrderDto dto, String shopKey) {
+        if (dto == null) return;
+        if (dto.getOrderNo() == null || dto.getOrderNo().isBlank()) return;
+        if (dto.getUpdateTime() == null) return;
+        jdbcTemplate.update(UPSERT_SQL, toParams(dto, shopKey, Instant.now()));
     }
 
-    /**
-     * 将 Document 转成 Update（避免手写每个字段的 update）
-     * 说明：这里列出常用字段，你可以按你的 OrderDocument 字段补齐。
-     */
-    private Update buildUpdateFromDocument(Order_Doc doc) {
-        Update u = new Update();
-
-        // 不要 set id（_id），Mongo 不允许更新 _id
-        // u.set("_id", doc.getId()); // 禁止
-
-        u.set("orderNo", doc.getOrderNo());
-
-        u.set("payTime", doc.getPayTime());
-        u.set("orderStatus", doc.getOrderStatus());
-        u.set("freight", doc.getFreight());
-        u.set("promotionDiscount", doc.getPromotionDiscount());
-        u.set("subOrderTotalPrice", doc.getSubOrderTotalPrice());
-        u.set("shipTime", doc.getShipTime());
-        u.set("refundInitiateTime", doc.getRefundInitiateTime());
-        u.set("createTime", doc.getCreateTime());
-        u.set("updateTime", doc.getUpdateTime());
-
-        u.set("distributionType", doc.getDistributionType());
-        u.set("receiveTime", doc.getReceiveTime());
-        u.set("payType", doc.getPayType());
-
-        u.set("ksSkuId", doc.getKsSkuId());
-        u.set("productId", doc.getProductId());
-        u.set("productName", doc.getProductName());
-        u.set("skuQuantity", doc.getSkuQuantity());
-
-        u.set("unitPriceBeforePromoSnapshot", doc.getUnitPriceBeforePromoSnapshot());
-        u.set("discountAmount", doc.getDiscountAmount());
-        u.set("unitPriceSnapshot", doc.getUnitPriceSnapshot());
-
-        // 退款（按你最新优化：latestRefund/hasRefund 或者 orderRefundList）
-        u.set("hasRefund", doc.getHasRefund());
-        u.set("RefundStatus", doc.getRefundStatus());
-        u.set("RefundHandlingWay",doc.getHandlingWay());
-
-        return u;
+    private Object[] toParams(OrderDto dto, String shopKey, Instant now) {
+        return new Object[]{
+                shopKey,
+                dto.getOrderNo(),
+                dto.getOrderStatus(),
+                toTs(dto.getPayTime()),
+                dto.getFreight(),
+                dto.getPromotionDiscount(),
+                dto.getSubOrderTotalPrice(),
+                toTs(dto.getShipTime()),
+                toTs(dto.getRefundInitiateTime()),
+                toTs(dto.getCreateTime()),
+                toTs(dto.getUpdateTime()),
+                dto.getDistributionType(),
+                toTs(dto.getReceiveTime()),
+                dto.getPayType(),
+                dto.getKsSkuId(),
+                dto.getProductId(),
+                dto.getProductName(),
+                dto.getSkuQuantity(),
+                dto.getUnitPriceBeforePromoSnapshot(),
+                dto.getDiscountAmount(),
+                dto.getUnitPriceSnapshot(),
+                dto.getHasRefund(),
+                dto.getRefundStatus(),
+                dto.getHandlingWay(),
+                toTs(now)   // last_ingested_at
+        };
     }
 
     public OrderList[] extractOrderList(OpenOrderCursorListResponse src) {
@@ -362,24 +182,16 @@ public class OrderCursorListService {
         return src.getData().getOrderList();
     }
 
-    /**
-     * 从响应中提取下一页 cursor（常见命名：data.cursor / data.nextCursor 等）
-     * 你拿到真实 JSON 后，把这里改成准确的 getter 路径即可。
-     */
     public String extractNextCursor(OpenOrderCursorListResponse resp) {
         if (resp == null) return null;
-
         try {
-
-            // 常见结构示例（需你按实际 SDK getter 调整）：
-            // return resp.getData().getCursor();
-            // 或 return resp.getData().getNextCursor();
-
-            // 这里先返回 null，避免你误用导致死循环
             return resp.getData().getCursor();
         } catch (Exception ignore) {
             return null;
         }
     }
-}
 
+    private static Timestamp toTs(Instant instant) {
+        return instant == null ? null : Timestamp.from(instant);
+    }
+}

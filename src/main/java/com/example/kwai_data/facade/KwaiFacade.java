@@ -1,7 +1,5 @@
 package com.example.kwai_data.facade;
 
-// package com.example.kwai_data.facade;
-
 import com.example.kwai_data.client.KwaiClientFactory;
 import com.example.kwai_data.config.EndMsMode;
 import com.example.kwai_data.config.TimeRangeMillis;
@@ -17,20 +15,17 @@ import com.example.kwai_data.service.UnsettledOrderService;
 import com.example.kwai_data.service.sellerInfoService;
 import com.example.kwai_data.util.TimeUtil;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
-import com.kuaishou.merchant.open.api.common.utils.GsonUtils;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
 import com.kuaishou.merchant.open.api.response.funds.OpenFundsCenterWirhdrawRecordListResponse;
 import com.kuaishou.merchant.open.api.response.funds.OpenFundsFinancialStatementListResponse;
 import com.kuaishou.merchant.open.api.response.user.OpenUserSellerGetResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -40,101 +35,74 @@ public class KwaiFacade {
     private final FundsAccountInfoService fundsAccountInfoService;
     private final OrderCursorListService orderCursorListService;
     private final TimeRangeProvider timeRangeProvider;
-    private final MongoTemplate erpMongoTemplate;
+    private final JdbcTemplate jdbcTemplate;
     private final ShopAuthRegistry registry;
     private final KwaiClientFactory clientFactory;
     private final UnsettledOrderService unsettledOrderService;
-    // 预留：后续继续注入
-    // private final OrderService orderService;
-    // private final FundsService fundsService;
 
-    /** 示例：对外提供“获取店铺信息（JSON字符串）” */
-//    public String getSellerInfoJson() throws Exception {
-//        return GsonUtils.toJSON(sellerInfoService.fetchSellerInfo());
-//
-//    }
-//
-//    /** 示例：对外提供“获取店铺信息（对象）” */
-//    public Object getSellerInfo() throws Exception {
-//        return sellerInfoService.fetchSellerInfo();
-//    }
-
-    /** 预留：后续可做“全量同步”编排 */
+    /** 全量同步：清空后重新拉取过去一个月数据 */
     public void syncAll() throws Exception {
-        // 例如：
 
-        clearSellerCollectionsKeepIndexes();
+        clearSellerInfo();
 
         for (var e : registry.asMap().entrySet()) {
-
             String shopKey = e.getKey();
-            ShopAuth auth = e.getValue();
-            System.out.println(shopKey);
+            ShopAuth auth  = e.getValue();
+            System.out.println("同步店铺: " + shopKey);
 
-            clearShopCollection("Unsetllement_",shopKey);
-            clearShopCollection("orders_",shopKey);
-            clearShopCollection("Withdraw_",shopKey);
-
+            // 清空该店铺的历史数据（全量模式）
+            clearShopData("unsettled_orders", shopKey);
+            clearShopData("orders",           shopKey);
+            clearShopData("withdraw_records", shopKey);
 
             AccessTokenKsMerchantClient client = clientFactory.getClient();
 
-            OpenUserSellerGetResponse SellerInforesp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
-            //System.out.println(SellerInforesp.getMsg());
+            // 拉取并写入卖家信息
+            OpenUserSellerGetResponse sellerResp = sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
             sellerInfo totalData = sellerInfo.builder()
-                    .shopId(SellerInforesp.getData().getSellerId())
-                    .shopName(SellerInforesp.getData().getName())
+                    .shopId(sellerResp.getData().getSellerId())
+                    .shopName(sellerResp.getData().getName())
                     .accountBalance(fundsAccountInfoService.getBalance(client, auth.getAccessToken()))
                     .build();
-
             sellerInfoService.sellerInfoupsert(totalData);
-            //获取数据
 
-            OpenFundsCenterWirhdrawRecordListResponse WRecord_resp = sellerInfoService.fetchWirhdrawRecordInfo(client, auth.getAccessToken());
-            sellerInfoService.WRecordupsert(WRecord_resp, shopKey);
+            // 拉取并写入提现记录
+            OpenFundsCenterWirhdrawRecordListResponse wResp =
+                    sellerInfoService.fetchWirhdrawRecordInfo(client, auth.getAccessToken());
+            sellerInfoService.WRecordupsert(wResp, shopKey);
 
-
+            // 拉取未结算订单
             syncRange(shopKey);
 
+            // 拉取订单（按月份分片）
             LastMonthStartToTodayStart(shopKey);
         }
-
-
-        //totalData.setAccountBalance(fundsAccountInfoService.getAccountInfo().getData().get);
-        //System.out.println(totalData.getShopId());
-        // var seller  sellerInfoService.getSellerInfo();
-        // var orders = orderService.queryOrders(...);
-        // var funds = fundsService.queryBills(...);
-        // 统一落库 / 汇总计算 / 发送消息等
     }
 
-    public void clearSellerCollectionsKeepIndexes() {
-        Query all = new Query(); // 空查询匹配全部
-        erpMongoTemplate.remove(all, "seller_info");
-
+    /** 清空 seller_info 表 */
+    private void clearSellerInfo() {
+        jdbcTemplate.update("DELETE FROM seller_info");
     }
 
-    private void clearShopCollection(String collectionPrefix, String shopKey) {
-        Query all = new Query();
-        erpMongoTemplate.remove(all,collectionPrefix  + shopKey);
+    /** 按 shop_key 清空指定表 */
+    private void clearShopData(String table, String shopKey) {
+        jdbcTemplate.update("DELETE FROM " + table + " WHERE shop_key = ?", shopKey);
     }
 
-
-
+    /** 将过去一个月按 7 天分片拉取订单 */
     public void LastMonthStartToTodayStart(String shopkey) throws Exception {
         TimeRangeMillis range = timeRangeProvider.lastMonthStartToNow();
-        //System.out.println(range.getStartMs()+" "+range.getEndMs());
         List<TimeRangeMillis> ranges = timeRangeProvider.splitByDays(range, 7, EndMsMode.INCLUSIVE);
-
         for (TimeRangeMillis r : ranges) {
             syncOrdersInRange(r, shopkey);
         }
     }
 
+    /** 拉取指定时间段内的订单并批量写入 */
     public void syncOrdersInRange(TimeRangeMillis r, String shopkey) throws Exception {
-
-        String cursor = null;
-        int pageSize = 50;
-        int maxPages = 500;   // 防止死循环
+        String cursor  = null;
+        int pageSize   = 50;
+        int maxPages   = 500;   // 防止死循环
 
         for (int i = 0; i < maxPages; i++) {
             var resp = orderCursorListService.fetchOnce(
@@ -149,11 +117,10 @@ public class KwaiFacade {
 
             Thread.sleep(1000);
 
-            // 提取本页订单列表
             OrderList[] orderlist = orderCursorListService.extractOrderList(resp);
             if (orderlist.length == 0) break;
 
-            // 整页转 DTO → 一次批量写入（原来每条单独写，现在一次 BulkWrite）
+            // 整页转 DTO → 一次 batch INSERT
             List<OrderDto> dtos = Arrays.stream(orderlist)
                     .filter(Objects::nonNull)
                     .map(OrderDto::new)
@@ -162,71 +129,42 @@ public class KwaiFacade {
             int saved = orderCursorListService.upsertBatch(dtos, shopkey);
             System.out.println("  批量写入 " + saved + " 条（本页共 " + orderlist.length + " 条）");
 
-            // 推进游标
             String nextCursor = orderCursorListService.extractNextCursor(resp);
             if (nextCursor == null || nextCursor.isBlank() || nextCursor.equals(cursor)) break;
             cursor = nextCursor;
         }
     }
 
-
-
-    public void syncRange(String shopkey) throws Exception{
-
-
+    /** 拉取未结算订单（游标翻页） */
+    public void syncRange(String shopkey) throws Exception {
         int maxPages = 500;
-
         TimeRangeMillis range = timeRangeProvider.lastMonthStartToYesterdayEndInclusive();
         String cursor = "";
-
         int pageCount = 0;
 
         while (pageCount < maxPages) {
             pageCount++;
 
             OpenFundsFinancialStatementListResponse resp = unsettledOrderService.fetchOnce(
-                    shopkey,
-                    range.getStartMs(),
-                    range.getEndMs(),
-                    cursor
+                    shopkey, range.getStartMs(), range.getEndMs(), cursor
             );
-            System.out.println(pageCount+" "+cursor);
-            // 从 response 转 DTO records（如果你想把这段放回 service，也可以）
-            List<UnsettledOrderDto> records = unsettledOrderService.parseRecords(resp);
+            System.out.println("未结算订单第 " + pageCount + " 页, cursor=" + cursor);
 
-            if (records == null || records.isEmpty()) {
-                // 没有数据：结束
-                break;
-            }
+            List<UnsettledOrderDto> records = unsettledOrderService.parseRecords(resp);
+            if (records == null || records.isEmpty()) break;
 
             for (UnsettledOrderDto dto : records) {
-                // 通过订单详情 API 获取 createTime
                 Instant createTime = unsettledOrderService.fetchOrderCreateTime(shopkey, dto.getOid());
                 dto.setCreateTime(createTime);
-
                 unsettledOrderService.upsertOne(dto, shopkey);
             }
 
-            // 翻页 cursor
             String nextCursor = unsettledOrderService.extractNextCursor(resp);
-            if (nextCursor == null || nextCursor.isBlank() || nextCursor.equals("no_more"))  {
+            if (nextCursor == null || nextCursor.isBlank()
+                    || nextCursor.equals("no_more") || nextCursor.equals(cursor)) {
                 break;
             }
-
-            // 防止 cursor 不变化导致死循环
-            if (nextCursor.equals(cursor)) {
-                break;
-            }
-
-
             cursor = nextCursor;
         }
-
     }
-
-
-
-
-
 }
-

@@ -1,32 +1,40 @@
 package com.example.kwai_data.data;
 
+import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 
+@Entity
+@Table(name = "seller_info")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Document(collection = "seller_info")
 public class SellerInfo_Doc {
 
     @Id
-    private String id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    @Indexed(unique = true)     // 通常用 shopId 做唯一键，避免重复插入
+    @Column(name = "shop_id", unique = true)
     private Long shopId;
 
+    @Column(name = "shop_name", length = 256)
     private String shopName;
+
+    @Column(name = "account_balance")
     private Long accountBalance;
+
+    @Column(name = "pending_settlement", precision = 16, scale = 2)
     private BigDecimal pendingSettlement;
+
+    @Column(name = "total_withdrawn", precision = 16, scale = 2)
     private BigDecimal totalWithdrawn;
+
+    @Column(name = "net_transaction_amount", precision = 16, scale = 2)
     private BigDecimal netTransactionAmount;
 
+    @Column(name = "update_time")
     private Instant updateTime;
 }
-
