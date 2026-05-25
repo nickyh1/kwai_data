@@ -117,3 +117,18 @@ CREATE TABLE IF NOT EXISTS shop_auth (
     expires_at          DATETIME(3)                            COMMENT 'token 过期时间',
     last_refreshed_at   DATETIME(3)                            COMMENT '最后刷新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='店铺 OAuth 认证信息';
+
+-- ------------------------------------------------------------
+-- 增量同步 Checkpoint 表
+-- 记录每个店铺每类数据的上次同步结束时间戳，用于增量拉取
+-- sync_type: 'orders' | 'unsettled_orders'
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS sync_checkpoint (
+    id              BIGINT         AUTO_INCREMENT PRIMARY KEY,
+    shop_key        VARCHAR(64)    NOT NULL              COMMENT '店铺标识',
+    sync_type       VARCHAR(32)    NOT NULL              COMMENT '同步类型：orders / unsettled_orders',
+    last_end_ms     BIGINT         NOT NULL              COMMENT '上次同步的结束时间戳（毫秒，UTC）',
+    synced_at       DATETIME(3)                          COMMENT '上次同步完成时间',
+
+    UNIQUE KEY uk_shop_type (shop_key, sync_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='增量同步 Checkpoint';
