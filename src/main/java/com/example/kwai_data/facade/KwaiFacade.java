@@ -29,6 +29,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.Objects;
 
 @Component
 @RequiredArgsConstructor
@@ -129,46 +131,42 @@ public class KwaiFacade {
     }
 
     public void syncOrdersInRange(TimeRangeMillis r, String shopkey) throws Exception {
-        //var range = timeRangeProvider.yesterdayToTodayStart();
 
         String cursor = null;
         int pageSize = 50;
-        int maxPages = 500;          // 防止死循环
-
-
+        int maxPages = 500;   // 防止死循环
 
         for (int i = 0; i < maxPages; i++) {
             var resp = orderCursorListService.fetchOnce(
-                    shopkey,1, pageSize, 0, 1,
+                    shopkey, 1, pageSize, 0, 1,
                     r.getStartMs(), r.getEndMs(),
                     1, cursor
-
             );
 
-            System.out.println("\n");
             System.out.println(TimeUtil.toZonedDateTime(r.getStartMs(), "Asia/Shanghai")
-                    +" "+TimeUtil.toZonedDateTime(r.getEndMs(), "Asia/Shanghai"));
+                    + " ~ " + TimeUtil.toZonedDateTime(r.getEndMs(), "Asia/Shanghai")
+                    + "  第 " + (i + 1) + " 页");
+
             Thread.sleep(1000);
-            // 1) 提取订单列表（按实际结构改）
-            OrderList orderlist[] = orderCursorListService.extractOrderList(resp);
 
-            for (OrderList item : orderlist) {
-                if (item == null) continue;
-                OrderDto dto = new OrderDto(item);
-                orderCursorListService.upsertOne(dto, shopkey);
-                //System.out.println(dto.getCreateTime());
+            // 提取本页订单列表
+            OrderList[] orderlist = orderCursorListService.extractOrderList(resp);
+            if (orderlist.length == 0) break;
 
-            }
+            // 整页转 DTO → 一次批量写入（原来每条单独写，现在一次 BulkWrite）
+            List<OrderDto> dtos = Arrays.stream(orderlist)
+                    .filter(Objects::nonNull)
+                    .map(OrderDto::new)
+                    .collect(Collectors.toList());
 
+            int saved = orderCursorListService.upsertBatch(dtos, shopkey);
+            System.out.println("  批量写入 " + saved + " 条（本页共 " + orderlist.length + " 条）");
 
-
-            // 4) 推进游标（按实际结构改）
+            // 推进游标
             String nextCursor = orderCursorListService.extractNextCursor(resp);
             if (nextCursor == null || nextCursor.isBlank() || nextCursor.equals(cursor)) break;
             cursor = nextCursor;
         }
-
-
     }
 
 

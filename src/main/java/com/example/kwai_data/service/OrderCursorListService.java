@@ -235,32 +235,69 @@ public class OrderCursorListService {
 
 
     /**
-     * 批量幂等写入（推荐）：按 orderNo 去重并 bulk upsert
-     * 返回：本次批量实际处理的 doc 数量（去重后）
+     * 批量幂等写入：按 orderNo 去重并 bulk upsert 到指定店铺集合。
+     * 字段策略与 upsertOne 保持一致：
+     *   - setOnInsert：不可变字段（只在首次插入时写）
+     *   - set / max：可变字段（每次同步都更新）
+     *
+     * @return 本次实际处理的去重后 doc 数量
      */
-    public int upsertBatch(List<OrderDto> dtos) {
+    public int upsertBatch(List<OrderDto> dtos, String shopKey) {
         if (dtos == null || dtos.isEmpty()) return 0;
 
-        // 1) dto -> doc
+        String collection = orderCollection(shopKey);
+
+        // 1) dto -> doc，过滤无效数据
         List<Order_Doc> docs = dtos.stream()
                 .filter(Objects::nonNull)
                 .map(OrderMapper::toDocument)
                 .filter(d -> d.getOrderNo() != null && !d.getOrderNo().isBlank())
+                .filter(d -> d.getUpdateTime() != null)   // updateTime 必须有，否则无法做 .max()
                 .collect(Collectors.toList());
 
         if (docs.isEmpty()) return 0;
 
-        // 2) 按 orderNo 去重（同一批里可能重复）
+        // 2) 按 orderNo 去重（同一批里可能有重复，保留最后一条）
         Map<String, Order_Doc> unique = new LinkedHashMap<>();
         for (Order_Doc d : docs) unique.put(d.getOrderNo(), d);
         List<Order_Doc> uniqueDocs = new ArrayList<>(unique.values());
 
-        // 3) bulk upsert（用 orderNo 做匹配条件）
-        BulkOperations ops = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, Order_Doc.class);
+        Instant now = Instant.now();
 
-        for (Order_Doc doc : uniqueDocs) {
-            Query q = new Query(where("orderNo").is(doc.getOrderNo()));
-            Update u = buildUpdateFromDocument(doc);
+        // 3) 构建 bulk upsert，写入动态集合
+        BulkOperations ops = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, collection);
+
+        for (Order_Doc incoming : uniqueDocs) {
+            Query q = new Query(Criteria.where("orderNo").is(incoming.getOrderNo()));
+
+            Update u = new Update()
+                    // ── 不可变字段：仅首次插入时写入 ──────────────────────────
+                    .setOnInsert("orderNo",                     incoming.getOrderNo())
+                    .setOnInsert("payTime",                     incoming.getPayTime())
+                    .setOnInsert("freight",                     incoming.getFreight())
+                    .setOnInsert("promotionDiscount",           incoming.getPromotionDiscount())
+                    .setOnInsert("subOrderTotalPrice",          incoming.getSubOrderTotalPrice())
+                    .setOnInsert("shipTime",                    incoming.getShipTime())
+                    .setOnInsert("createTime",                  incoming.getCreateTime())
+                    .setOnInsert("distributionType",            incoming.getDistributionType())
+                    .setOnInsert("payType",                     incoming.getPayType())
+                    .setOnInsert("ksSkuId",                     incoming.getKsSkuId())
+                    .setOnInsert("productId",                   incoming.getProductId())
+                    .setOnInsert("productName",                 incoming.getProductName())
+                    .setOnInsert("skuQuantity",                 incoming.getSkuQuantity())
+                    .setOnInsert("unitPriceBeforePromoSnapshot",incoming.getUnitPriceBeforePromoSnapshot())
+                    .setOnInsert("discountAmount",              incoming.getDiscountAmount())
+                    .setOnInsert("unitPriceSnapshot",           incoming.getUnitPriceSnapshot())
+                    // ── 可变字段：每次同步都更新 ──────────────────────────────
+                    .max("updateTime",          incoming.getUpdateTime())   // 只接受更新的时间（乱序保护）
+                    .set("lastIngestedAt",      now.plus(Duration.ofHours(8)))
+                    .set("orderStatus",         incoming.getOrderStatus())
+                    .set("refundInitiateTime",  incoming.getRefundInitiateTime())
+                    .set("receiveTime",         incoming.getReceiveTime())
+                    .set("hasRefund",           incoming.getHasRefund())
+                    .set("refundStatus",        incoming.getRefundStatus())
+                    .set("handlingWay",         incoming.getHandlingWay());
+
             ops.upsert(q, u);
         }
 
