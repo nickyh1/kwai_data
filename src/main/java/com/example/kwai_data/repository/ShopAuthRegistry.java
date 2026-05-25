@@ -1,8 +1,8 @@
 package com.example.kwai_data.repository;
 
 import com.example.kwai_data.config.KwaiProperties;
-import com.example.kwai_data.data.ShopAuth;
-import com.example.kwai_data.data.ShopAuthDoc;
+import com.example.kwai_data.domain.ShopAuth;
+import com.example.kwai_data.domain.ShopAuthDoc;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

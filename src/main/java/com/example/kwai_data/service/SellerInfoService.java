@@ -2,8 +2,8 @@ package com.example.kwai_data.service;
 
 import com.example.kwai_data.config.TimeRangeMillis;
 import com.example.kwai_data.config.TimeRangeProvider;
-import com.example.kwai_data.data.SellerInfo_Doc;
-import com.example.kwai_data.data.sellerInfo;
+import com.example.kwai_data.domain.SellerInfo_Doc;
+import com.example.kwai_data.dto.SellerInfoDto;
 import com.example.kwai_data.mapper.SellerInfoMapper;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.domain.funds.WithdrawRecordDto;
@@ -23,7 +23,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class sellerInfoService {
+public class SellerInfoService {
 
     private final TimeRangeProvider timeRangeProvider;
     private final JdbcTemplate jdbcTemplate;
@@ -72,7 +72,7 @@ public class sellerInfoService {
         return client.execute(request);
     }
 
-    public void sellerInfoupsert(sellerInfo dto) {
+    public void sellerInfoupsert(SellerInfoDto dto) {
         SellerInfo_Doc info = SellerInfoMapper.toEntity(dto);
         Instant now = Instant.now().plus(Duration.ofHours(8));
         jdbcTemplate.update(UPSERT_SELLER_SQL,

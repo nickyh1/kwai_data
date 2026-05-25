@@ -1,6 +1,6 @@
 package com.example.kwai_data.repository;
 
-import com.example.kwai_data.data.SyncCheckpoint;
+import com.example.kwai_data.domain.SyncCheckpoint;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

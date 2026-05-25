@@ -1,4 +1,4 @@
-package com.example.kwai_data.data;
+package com.example.kwai_data.domain;
 
 import jakarta.persistence.*;
 import java.time.Instant;

@@ -1,8 +1,8 @@
 package com.example.kwai_data.service;
 
 import com.example.kwai_data.client.KwaiClientFactory;
-import com.example.kwai_data.data.ShopAuth;
-import com.example.kwai_data.data.UnsettledOrderDto;
+import com.example.kwai_data.domain.ShopAuth;
+import com.example.kwai_data.dto.UnsettledOrderDto;
 import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.request.funds.OpenFundsFinancialStatementListRequest;

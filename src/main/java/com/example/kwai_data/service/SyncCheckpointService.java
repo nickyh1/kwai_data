@@ -1,6 +1,6 @@
 package com.example.kwai_data.service;
 
-import com.example.kwai_data.data.SyncCheckpoint;
+import com.example.kwai_data.domain.SyncCheckpoint;
 import com.example.kwai_data.repository.SyncCheckpointRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

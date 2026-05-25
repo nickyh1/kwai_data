@@ -4,10 +4,10 @@ import com.example.kwai_data.config.EndMsMode;
 import com.example.kwai_data.config.TimeRangeMillis;
 import com.example.kwai_data.config.TimeRangeProvider;
 import com.example.kwai_data.client.KwaiClientFactory;
-import com.example.kwai_data.data.OrderDto;
-import com.example.kwai_data.data.ShopAuth;
-import com.example.kwai_data.data.UnsettledOrderDto;
-import com.example.kwai_data.data.sellerInfo;
+import com.example.kwai_data.dto.OrderDto;
+import com.example.kwai_data.domain.ShopAuth;
+import com.example.kwai_data.dto.UnsettledOrderDto;
+import com.example.kwai_data.dto.SellerInfoDto;
 import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.example.kwai_data.service.*;
 import com.example.kwai_data.util.TimeUtil;
@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class KwaiFacade {
 
     // ── 依赖注入 ────────────────────────────────────────────────
-    private final sellerInfoService      sellerInfoService;
+    private final SellerInfoService      sellerInfoService;
     private final FundsAccountInfoService fundsAccountInfoService;
     private final OrderCursorListService orderCursorListService;
     private final UnsettledOrderService  unsettledOrderService;
@@ -101,7 +101,7 @@ public class KwaiFacade {
                                 AccessTokenKsMerchantClient client) throws Exception {
         OpenUserSellerGetResponse sellerResp =
                 sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
-        sellerInfo totalData = sellerInfo.builder()
+        SellerInfoDto totalData = SellerInfoDto.builder()
                 .shopId(sellerResp.getData().getSellerId())
                 .shopName(sellerResp.getData().getName())
                 .accountBalance(fundsAccountInfoService.getBalance(client, auth.getAccessToken()))

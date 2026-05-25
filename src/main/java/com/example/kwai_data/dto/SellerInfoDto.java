@@ -1,4 +1,4 @@
-package com.example.kwai_data.data;
+package com.example.kwai_data.dto;
 
 
 import lombok.AllArgsConstructor;
@@ -12,7 +12,7 @@ import java.time.Instant;
 @Builder
 @AllArgsConstructor
 @Data
-public class sellerInfo {
+public class SellerInfoDto {
     private String shopName;                 // 小店名
     private Long shopId;                     // 小店ID
     private Long accountBalance;       // 账户余额
@@ -23,4 +23,3 @@ public class sellerInfo {
     @Builder.Default  // 关键：告诉 Builder 使用这个默认值
     private Instant updateTime = Instant.now();
 }
-

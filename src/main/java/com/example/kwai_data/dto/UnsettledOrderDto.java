@@ -1,4 +1,4 @@
-package com.example.kwai_data.data;
+package com.example.kwai_data.dto;
 
 import lombok.*;
 
@@ -42,4 +42,3 @@ public class UnsettledOrderDto {
     /** 平台佣金（来自 open.funds.financial.statement.list API） */
     private BigDecimal platformCommissionAmount;
 }
-

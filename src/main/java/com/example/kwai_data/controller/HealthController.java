@@ -1,4 +1,4 @@
-package com.example.kwai_data.demo;
+package com.example.kwai_data.controller;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;

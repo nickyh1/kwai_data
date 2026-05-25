@@ -1,6 +1,6 @@
 package com.example.kwai_data.repository;
 
-import com.example.kwai_data.data.SellerInfo_Doc;
+import com.example.kwai_data.domain.SellerInfo_Doc;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

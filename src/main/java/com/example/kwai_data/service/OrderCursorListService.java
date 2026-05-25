@@ -1,8 +1,8 @@
 package com.example.kwai_data.service;
 
 import com.example.kwai_data.client.KwaiClientFactory;
-import com.example.kwai_data.data.OrderDto;
-import com.example.kwai_data.data.ShopAuth;
+import com.example.kwai_data.dto.OrderDto;
+import com.example.kwai_data.domain.ShopAuth;
 import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 import com.kuaishou.merchant.open.api.domain.order.OrderList;
