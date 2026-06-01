@@ -32,10 +32,7 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: >-
-        jdbc:mysql://mysql:3306/ERP?useUnicode=true
-        &characterEncoding=utf8&serverTimezone=UTC
-        &useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/ERP?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true"
       SPRING_DATASOURCE_USERNAME: kwai
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kwai123}
 
