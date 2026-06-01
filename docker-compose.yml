@@ -32,13 +32,13 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/ERP?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true"
-      SPRING_DATASOURCE_USERNAME: kwai
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kwai123}
-
-      KWAI_APP_KEY:     ${KWAI_APP_KEY}
-      KWAI_APP_SECRET:  ${KWAI_APP_SECRET}
-      KWAI_SIGN_SECRET: ${KWAI_SIGN_SECRET}
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/ERP?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=kwai
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD:-kwai123}
+      # 只在 .env / 宿主机设置了才传入容器；否则不传，Spring Boot 回退到 application.yml
+      - KWAI_APP_KEY
+      - KWAI_APP_SECRET
+      - KWAI_SIGN_SECRET
     volumes:
       # 挂载含店铺 token 的配置文件（token 较长不宜放 env）
       - ./config:/app/config:ro
