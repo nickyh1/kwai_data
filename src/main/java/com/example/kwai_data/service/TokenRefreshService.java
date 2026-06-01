@@ -1,7 +1,7 @@
 package com.example.kwai_data.service;
 
 import com.example.kwai_data.config.KwaiProperties;
-import com.example.kwai_data.data.ShopAuth;
+import com.example.kwai_data.domain.ShopAuth;
 import com.example.kwai_data.repository.ShopAuthRegistry;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.slf4j.Logger;

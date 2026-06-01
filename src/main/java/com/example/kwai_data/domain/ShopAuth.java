@@ -1,4 +1,4 @@
-package com.example.kwai_data.data;
+package com.example.kwai_data.domain;
 
 /**
  * 店铺认证信息
@@ -13,4 +13,3 @@ public class ShopAuth {
     public String getRefreshToken() { return refreshToken; }
     public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
 }
-

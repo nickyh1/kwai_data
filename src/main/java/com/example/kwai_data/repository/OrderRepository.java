@@ -1,17 +1,11 @@
 package com.example.kwai_data.repository;
 
-// src/main/java/com/example/kwai_data/repo/OrderRepository.java
-
-
-import com.example.kwai_data.data.Order_Doc;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import com.example.kwai_data.domain.Order_Doc;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-public interface OrderRepository extends MongoRepository<Order_Doc, String> {
-
+public interface OrderRepository extends JpaRepository<Order_Doc, Long> {
     Optional<Order_Doc> findByOrderNo(String orderNo);
-
     boolean existsByOrderNo(String orderNo);
 }
-

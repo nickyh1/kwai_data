@@ -1,28 +1,26 @@
-package com.example.kwai_data.data;
+package com.example.kwai_data.domain;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
+import jakarta.persistence.*;
 import java.time.Instant;
 
-/**
- * 店铺认证信息 MongoDB 文档
- * 用于持久化 token，支持应用重启后恢复
- */
-@Document(collection = "shop_auth")
+@Entity
+@Table(name = "shop_auth")
 public class ShopAuthDoc {
 
     @Id
+    @Column(name = "shop_key")
     private String shopKey;
 
+    @Column(name = "access_token", columnDefinition = "TEXT")
     private String accessToken;
 
+    @Column(name = "refresh_token", columnDefinition = "TEXT")
     private String refreshToken;
 
-    /** token 过期时间 */
+    @Column(name = "expires_at")
     private Instant expiresAt;
 
-    /** 最后刷新时间 */
+    @Column(name = "last_refreshed_at")
     private Instant lastRefreshedAt;
 
     public ShopAuthDoc() {}
@@ -36,16 +34,12 @@ public class ShopAuthDoc {
 
     public String getShopKey() { return shopKey; }
     public void setShopKey(String shopKey) { this.shopKey = shopKey; }
-
     public String getAccessToken() { return accessToken; }
     public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
-
     public String getRefreshToken() { return refreshToken; }
     public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
-
     public Instant getExpiresAt() { return expiresAt; }
     public void setExpiresAt(Instant expiresAt) { this.expiresAt = expiresAt; }
-
     public Instant getLastRefreshedAt() { return lastRefreshedAt; }
     public void setLastRefreshedAt(Instant lastRefreshedAt) { this.lastRefreshedAt = lastRefreshedAt; }
 }

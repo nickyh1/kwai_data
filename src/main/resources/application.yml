@@ -1,26 +1,44 @@
 # src/main/resources/application.yml
 kwai:
   base-url: https://openapi.kwaixiaodian.com
-  app-key: "ks670191920826361315"
-  app-secret: "CO1TpCII8ydUJXd1DcppFA"
-  sign-secret: "b0f7478aa6d1699838b2416618fa01b5"
+  app-key: "ks697213520049866660"
+  app-secret: "zyNK73fVyCio7ILCnG6cKw"
+  sign-secret: "c8f7e28978c5f0415e238466f89da0f2"
   shops:
     shop-biaowanggongchang:
-      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJwcegu1YHsgLQpiJ9Th7wT5Wj1Z8WyJifjZdG-k6dSctTmS_VoBYm_Bmhe0rfEVd4y1_M8iG2LjFfpViX0zHrK-9_cERNy1MKP4l_dyzUnFhlbIwBVmJb8S7816x3IqtW_IurCG9wYCX7VuoXn4HpNXBoSdJTaZfTbRbe4zPS88hU0zxRHIiAvcWKEkPFrS9iT91JX10drcxg2AYy4iYQ4LDWQt0z60SgFMAE"
+      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAV2DbVKvz-YUGbrGzEC417kBvaoOl3Gt6WKTrKMTzh1OqieaYgJI56B2qXge_YOZjNku__syJllcvi_F25EVVThoSYfZ9co1oSiGh93iNTWvF5WYVIiAjIPtgwLT2VetQiYJf7f2WPZEU0VMdOCOZ-m72uT2f7SgFMAE"
       refresh-token: "ChJvYXV0aC5yZWZyZXNoVG9rZW4SwAH2fghEq2p1leeaCP0CLTJn5uKtN0TMk_h-hiArVFQWH3HkcU9DVP2AY8LeAfqo76svy9wQUvacFg1AvZoP1ehPy5e8oXso-Q7N9RY7p9kfqLWekxzoM7LW4TdsMhBRQWH-JxK3vUPnDLuo76p0_DdCc_oXDXqF7USZcx4ioNjiaHDi9xXcxqKM9Sc7eQ1hk513eaf8dSc9qAarnRDzAv7dNs4Gj29IxfMHLihDkZa7k29xDM6UCja2pqxphyOmjZEaEgxisP4G5Stsq8OygUO1ISR9CiIgLpj2cVf1ufqd7BD-eMJGfWdZmq4lY4hTpveLT0Rqb7woBTAB"
-
-
 
   time:
     zone: Asia/Shanghai
     lookback-days: 7
 
-
-
 spring:
-  mongodb:
-    uri: mongodb://localhost:27017/ERP
-    auto-index-creation: true
+  datasource:
+    # 本地开发默认配置；容器部署时通过环境变量 SPRING_DATASOURCE_* 覆盖
+    url: jdbc:mysql://localhost:3306/ERP?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+    username: kwai
+    password: kwai123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true   # 已有库首次接入 Flyway 时自动 baseline，不影响现有表
+    baseline-version: 0
+
+  jpa:
+    hibernate:
+      ddl-auto: none        # 表结构由 Flyway 管理，Hibernate 不自动改表
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          time_zone: UTC    # Instant 字段以 UTC 存入 DATETIME 列
 
 management:
   endpoints:
@@ -30,4 +48,3 @@ management:
   endpoint:
     health:
       show-details: always
-

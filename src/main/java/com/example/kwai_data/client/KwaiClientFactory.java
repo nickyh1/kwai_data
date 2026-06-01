@@ -1,7 +1,7 @@
 package com.example.kwai_data.client;
 
 import com.example.kwai_data.config.KwaiProperties;
-import com.example.kwai_data.data.ShopAuth;
+import com.example.kwai_data.domain.ShopAuth;
 import com.kuaishou.merchant.open.api.client.AccessTokenKsMerchantClient;
 
 import java.util.Map;

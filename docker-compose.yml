@@ -1,0 +1,50 @@
+services:
+
+  # ── MySQL 8.0 ────────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: kwai-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123}
+      MYSQL_DATABASE: ERP          # 只负责建库，建表由应用层 Flyway 完成
+      MYSQL_USER: kwai
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-kwai123}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-ukwai", "-p${MYSQL_PASSWORD:-kwai123}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Spring Boot 应用 ──────────────────────────────────────────
+  app:
+    build: .
+    container_name: kwai-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/ERP?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: kwai
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-kwai123}
+
+      KWAI_APP_KEY:     ${KWAI_APP_KEY}
+      KWAI_APP_SECRET:  ${KWAI_APP_SECRET}
+      KWAI_SIGN_SECRET: ${KWAI_SIGN_SECRET}
+    volumes:
+      # 挂载含店铺 token 的配置文件（token 较长不宜放 env）
+      - ./config:/app/config:ro
+      - app_logs:/app/logs
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  app_logs:

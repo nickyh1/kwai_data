@@ -1,6 +1,6 @@
 package com.example.kwai_data.config;
 
-import com.example.kwai_data.data.ShopAuth;
+import com.example.kwai_data.domain.ShopAuth;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

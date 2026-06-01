@@ -1,4 +1,4 @@
-package com.example.kwai_data.data;
+package com.example.kwai_data.dto;
 
 // src/main/java/com/example/kwai_data/dto/order/OrderDto.java
 
@@ -144,7 +144,7 @@ public class OrderDto {
         this.distributionType = base == null ? null : String.valueOf(base.getCpsType());
         this.payType = base == null ? null : String.valueOf(base.getPayType());
 
-        // 金额（你的报文里看起来是“分”）
+        // 金额（你的报文里看起来是"分"）
         this.freight = fenToYuan(base == null ? null : base.getExpressFee());
         this.promotionDiscount = fenToYuan(base == null ? null : base.getDiscountFee());
 
@@ -195,4 +195,3 @@ public class OrderDto {
     }
 
 }
-
