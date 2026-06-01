@@ -8,9 +8,9 @@
 
 - [技术栈](#技术栈)
 - [启动方式](#启动方式)
-- [配置说明](#配置说明)
+- [配置方式](#配置方式)
 - [数据库初始化](#数据库初始化)
-- [同步逻辑](#同步逻辑)
+- [同步逻辑说明](#同步逻辑说明)
 
 ---
 
@@ -21,6 +21,7 @@
 | Java | 17 |
 | Spring Boot | 4.0.0 |
 | Spring Data MongoDB | 随 Boot 版本 |
+| MongoDB | 7 |
 | 快手商家开放 SDK | 1.0.7633（本地 jar） |
 | Lombok | 1.18.36 |
 
@@ -28,13 +29,52 @@
 
 ## 启动方式
 
-### 前置条件
+### 方式一：Docker Compose（推荐）
 
+> 一条命令同时启动 MongoDB 数据库和应用，数据库索引自动初始化。
+
+**前置条件**
+- Docker & Docker Compose V2（`docker compose` 命令）
+
+**步骤**
+
+```bash
+# 1. 复制环境变量模板并填写真实凭证
+cp .env.example .env
+# 编辑 .env，填入 KWAI_APP_KEY / KWAI_APP_SECRET / KWAI_SIGN_SECRET / 各店铺 Token
+
+# 2. 启动全部服务（首次会自动 build 镜像 + 初始化 MongoDB）
+docker compose up -d
+
+# 3. 查看日志
+docker compose logs -f app
+```
+
+启动后：
+- 应用：`http://localhost:8080`
+- 健康检查：`http://localhost:8080/actuator/health`
+- MongoDB：`localhost:27017`（库名 `ERP`）
+
+**停止 / 清理**
+
+```bash
+# 停止容器，保留数据卷
+docker compose down
+
+# 停止并删除数据卷（数据会丢失，重启后重新初始化）
+docker compose down -v
+```
+
+---
+
+### 方式二：本地直接运行（需自备 MongoDB）
+
+**前置条件**
 - JDK 17+
-- MongoDB 运行在 `localhost:27017`（或按实际修改配置）
-- Maven（或直接用项目内置的 `mvnw`）
+- MongoDB 7 运行在 `localhost:27017`
+- Maven 或使用项目内置的 `mvnw`
 
-### 本地运行
+**步骤**
 
 ```bash
 # 1. 进入项目根目录
@@ -48,17 +88,18 @@ mvn install:install-file \
   -Dversion=1.0.7633 \
   -Dpackaging=jar
 
-# 3. 编译并启动
+# 3. 设置环境变量（或在 IDE Run Configuration 中配置）
+export KWAI_APP_KEY=ks_xxx
+export KWAI_APP_SECRET=xxx
+export KWAI_SIGN_SECRET=xxx
+export KWAI_TOKEN_BIAOWANGCHANGJIA=ChF...
+export KWAI_TOKEN_BIAOWANGGONGCHANG=ChF...
+
+# 4. 编译并启动
 ./mvnw spring-boot:run
 ```
 
-启动后应用默认监听 `8080` 端口，健康检查接口：
-
-```
-GET http://localhost:8080/actuator/health
-```
-
-### 打包运行
+**打包运行**
 
 ```bash
 ./mvnw package -DskipTests
@@ -67,71 +108,80 @@ java -jar target/kwai_data-0.0.1-SNAPSHOT.jar
 
 ---
 
-## 配置说明
+## 配置方式
 
-所有配置集中在 `src/main/resources/application.yml`。
+所有配置通过**环境变量**注入，开发时写入 `.env`（已加入 `.gitignore`，不会提交到代码库）。
 
-```yaml
-kwai:
-  base-url: https://openapi.kwaixiaodian.com   # 快手开放平台接口地址
-  app-key: "your_app_key"
-  app-secret: "your_app_secret"
-  sign-secret: "your_sign_secret"
-
-  shops:
-    # 店铺 key 即为 MongoDB 集合名后缀，可自定义，字母/数字/下划线
-    shop-biaowangchangjia:
-      access-token: "ChF..."                   # 该店铺的 access_token
-    shop-biaowanggongchang:
-      access-token: "ChF..."
-    # 新增店铺：在此追加一个新 key 即可，无需改代码
-
-  time:
-    zone: Asia/Shanghai          # 时区，影响日期边界计算
-    lookback-days: 7             # 预留字段，当前未使用
-
-spring:
-  mongodb:
-    uri: mongodb://localhost:27017/ERP   # 数据库连接串，库名 ERP
-    auto-index-creation: true
+```bash
+# 复制模板
+cp .env.example .env
 ```
 
-### 关键配置项说明
+| 环境变量 | 说明 | 必填 |
+|---|---|---|
+| `KWAI_APP_KEY` | 快手开放平台应用 Key | 是 |
+| `KWAI_APP_SECRET` | 应用密钥，用于 SDK 鉴权 | 是 |
+| `KWAI_SIGN_SECRET` | 签名密钥，用于请求签名 | 是 |
+| `KWAI_TOKEN_BIAOWANGCHANGJIA` | 标旺厂家店铺 access_token | 是 |
+| `KWAI_TOKEN_BIAOWANGGONGCHANG` | 标旺工厂店铺 access_token | 是 |
+| `SPRING_DATA_MONGODB_URI` | MongoDB 连接串，Docker 模式由 Compose 自动注入 | 否 |
 
-| 配置项 | 说明 |
-|---|---|
-| `kwai.app-key` | 快手开放平台应用 Key |
-| `kwai.app-secret` | 应用密钥，用于 SDK 鉴权 |
-| `kwai.sign-secret` | 签名密钥，用于请求签名 |
-| `kwai.shops.<key>.access-token` | 各店铺的授权 Token，过期后需重新授权刷新 |
-| `kwai.time.zone` | 日期计算所用时区（默认上海） |
-| `spring.mongodb.uri` | MongoDB 连接串，按需修改 host / port / 库名 |
+> **Token 过期**：快手 access_token 有有效期，过期后需重新授权并更新 `.env` 中的对应值，重启服务生效。
 
-> **生产环境建议**：将 `app-secret`、`sign-secret`、`access-token` 等敏感字段通过环境变量注入，避免明文提交到代码库。  
-> 示例：`KWAI_APP_SECRET=xxx java -jar kwai_data.jar`
+### 新增店铺
+
+1. 在 `.env` 中追加 `KWAI_TOKEN_<新店铺KEY>=ChF...`
+2. 在 `application.yml` 的 `kwai.shops` 下追加同名 key：
+   ```yaml
+   kwai:
+     shops:
+       shop-新店铺key:
+         access-token: "${KWAI_TOKEN_新店铺KEY}"
+   ```
+3. 在 `infra/mongo/init/01_init_indexes.js` 的 `shops` 数组追加新 key（可选，首次同步也会自动建集合）
+4. 重启服务即自动同步新店铺，无需改代码
 
 ---
 
 ## 数据库初始化
 
-本项目使用 MongoDB，**无需手动建表或执行 DDL**。
+本项目使用 **MongoDB**，不使用关系型数据库，因此不使用 Flyway。  
+初始化机制等价于 Flyway 的迁移脚本，通过 MongoDB 的 `docker-entrypoint-initdb.d` 机制实现。
 
-- 连接库：`ERP`（由 `spring.mongodb.uri` 指定）
-- `spring.mongodb.auto-index-creation: true` 会在首次写入时自动根据实体注解创建索引
-- 应用首次启动后，以下集合会自动创建：
+### 初始化脚本
 
-| 集合名 | 内容 |
-|---|---|
-| `seller_info` | 所有店铺的卖家基本信息 + 账户余额 |
-| `orders_<shopKey>` | 各店铺订单（按 shopKey 分集合） |
-| `Unsetllement__<shopKey>` | 各店铺未结算流水 |
-| `Withdraw__<shopKey>` | 各店铺提现记录 |
+`infra/mongo/init/01_init_indexes.js` 会在容器**首次创建数据卷时自动执行一次**（重启不会重复执行）。
 
-> `<shopKey>` 对应 `application.yml` 中 `kwai.shops` 下的 key，例如 `shop-biaowangchangjia`。
+脚本执行内容：
+- 切换到 `ERP` 数据库
+- 创建 `seller_info` 集合并建立 `shopId` 唯一索引
+- 为已知店铺预建以下集合及索引：
+
+| 集合名 | 唯一索引字段 | 说明 |
+|---|---|---|
+| `seller_info` | `shopId` | 所有店铺卖家信息（共用） |
+| `orders__<shopKey>` | `orderNo` | 各店铺订单 |
+| `Unsetllement__<shopKey>` | `oid` | 各店铺未结算流水（注意双下划线） |
+| `Withdraw__<shopKey>` | — | 各店铺提现记录 |
+
+> 集合名规则：`<前缀>_` + `_` + `<shopKey>`，前缀本身带尾部下划线，故集合名为**双下划线**。  
+> `<shopKey>` 即 `application.yml` 中 `kwai.shops` 下的 key（如 `shop-biaowangchangjia`）。
+
+### 重新初始化（重置数据）
+
+```bash
+# 删除数据卷后重建，脚本会重新执行
+docker compose down -v
+docker compose up -d
+```
+
+### Spring Data 自动索引
+
+`spring.mongodb.auto-index-creation: true` 会在应用启动时根据实体类 `@Indexed` 注解补充创建索引，与初始化脚本互为补充。
 
 ---
 
-## 同步逻辑
+## 同步逻辑说明
 
 ### 触发方式
 
@@ -151,7 +201,7 @@ syncAll()
     │
     ├── 清空该店铺的 3 个集合
     │   ├── Unsetllement__<shopKey>
-    │   ├── orders_<shopKey>
+    │   ├── orders__<shopKey>
     │   └── Withdraw__<shopKey>
     │
     ├── 拉取卖家信息 + 账户余额 → 写入 seller_info
@@ -162,7 +212,7 @@ syncAll()
     │   └── 写入 Unsetllement__<shopKey>
     │
     └── 拉取订单（上月初 → 当前时刻，按 7 天分段，游标分页）
-        └── 写入 orders_<shopKey>
+        └── 写入 orders__<shopKey>
 ```
 
 ### 时间范围
@@ -175,13 +225,9 @@ syncAll()
 
 订单查询时，时间范围会被切分为多个 **7 天**的子区间，每段独立游标翻页，每页最多 50 条，最多翻 500 页。每次 API 请求间隔 **1 秒**（`Thread.sleep(1000)`），避免触发限流。
 
-### 同步策略：先清后写
+### 同步策略：先清后写（幂等覆盖）
 
-每次 `syncAll` 都会先清空相关集合，再全量重写。这是**幂等覆盖**策略，无需维护增量逻辑，但需注意：
+每次 `syncAll` 都会先清空相关集合，再全量重写。优点是逻辑简单、无需维护增量状态；注意事项：
 
-- 同步期间集合数据为空，若有下游读取需求，建议错开同步窗口或使用影子集合切换。
-- 若某店铺 API 报错，该店铺数据将丢失直到下次同步成功。
-
-### 新增店铺
-
-只需在 `application.yml` 中的 `kwai.shops` 下追加一个新的 key/access-token，重启服务即自动生效，无需改代码。
+- 同步期间集合数据短暂为空，若有下游读取需求，建议错开同步窗口
+- 若某店铺 API 报错，该店铺数据将丢失直到下次同步成功
