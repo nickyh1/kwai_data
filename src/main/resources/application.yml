@@ -1,24 +1,21 @@
-# src/main/resources/application.yml
 kwai:
   base-url: https://openapi.kwaixiaodian.com
-  app-key: "ks697213520049866660"
-  app-secret: "zyNK73fVyCio7lLCnG6cKw"
-  sign-secret: "c8f7e28978c5f0415e238466f89da0f2"
+  app-key: "${KWAI_APP_KEY}"
+  app-secret: "${KWAI_APP_SECRET}"
+  sign-secret: "${KWAI_SIGN_SECRET}"
   shops:
     shop-biaowangchangjia:
-      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJAQyPVrTmwV6eDdNoZoThTAwH9Aq4JvzJPPY7ip_oClAEmL_0iBYfPWo4rKMimn0lM3632jItAx0wnPK-28qoPqxoSKMdmjD9TQIWA4cxc70QihgBtIiD34Z-XwNJgFD9bnFEWuekOIRpupZJORopsI3KnmTEJCygFMAE"
+      access-token: "${KWAI_TOKEN_BIAOWANGCHANGJIA}"
     shop-biaowanggongchang:
-      access-token: "ChFvYXV0aC5hY2Nlc3NUb2tlbhJA2heGLAUAqvU1QFJ6rV0VHNYj9yxOWDTK5W6TsdkJw1nii_epLP0-N4hBY-c4pyTzN9Ypl_gfUzU8znlB1UP_qRoSNobUQXjSSbKFNqfffV1RYgsfIiBHorzSdRLjgEA7ueZSStcHFIG3ZgjE3D7EDRC0tynp8SgFMAE"
+      access-token: "${KWAI_TOKEN_BIAOWANGGONGCHANG}"
 
   time:
     zone: Asia/Shanghai
     lookback-days: 7
 
-
-
 spring:
   mongodb:
-    uri: mongodb://localhost:27017/ERP
+    uri: "${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/ERP}"
     auto-index-creation: true
 
 management:
@@ -29,4 +26,3 @@ management:
   endpoint:
     health:
       show-details: always
-

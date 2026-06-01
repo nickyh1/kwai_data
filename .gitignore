@@ -4,6 +4,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+# 环境变量文件（含敏感凭证，不提交）
+.env
+
 ### STS ###
 .apt_generated
 .classpath
