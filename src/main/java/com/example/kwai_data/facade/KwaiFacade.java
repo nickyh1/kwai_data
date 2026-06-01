@@ -1,6 +1,7 @@
 package com.example.kwai_data.facade;
 
 import com.example.kwai_data.config.EndMsMode;
+import com.example.kwai_data.config.KwaiProperties;
 import com.example.kwai_data.config.TimeRangeMillis;
 import com.example.kwai_data.config.TimeRangeProvider;
 import com.example.kwai_data.client.KwaiClientFactory;
@@ -41,6 +42,7 @@ public class KwaiFacade {
     private final TimeRangeProvider       timeRangeProvider;
     private final ShopAuthRegistry        registry;
     private final KwaiClientFactory       clientFactory;
+    private final KwaiProperties props;
 
     // ── 常量 ────────────────────────────────────────────────────
     /** 首次同步回溯天数（无 checkpoint 时兜底） */
@@ -57,6 +59,30 @@ public class KwaiFacade {
      * 线程池大小 = 店铺数量（上限 10，防止配置异常撑爆资源）。
      */
     private ExecutorService shopExecutor;
+
+    private String maskSecret(String value) {
+        if (value == null) {
+            return "null";
+        }
+        if (value.length() <= 12) {
+            return "len=" + value.length();
+        }
+        return "len=" + value.length()
+                + ", head=" + value.substring(0, 6)
+                + ", tail=" + value.substring(value.length() - 6);
+    }
+
+    private String maskToken(String token) {
+        if (token == null) {
+            return "null";
+        }
+        if (token.length() <= 12) {
+            return "len=" + token.length();
+        }
+        return "len=" + token.length()
+                + ", head=" + token.substring(0, 6)
+                + ", tail=" + token.substring(token.length() - 6);
+    }
 
     @PostConstruct
     private void initExecutor() {
@@ -94,6 +120,11 @@ public class KwaiFacade {
      */
     public void syncAll() {
         log.info("===== 开始全局增量同步 =====");
+
+        log.info("Kwai appKey={}", maskSecret(props.getAppKey()));
+        log.info("Kwai appSecret={}", maskSecret(props.getAppSecret()));
+        log.info("Kwai signSecret={}", maskSecret(props.getSignSecret()));
+        log.info("Kwai baseUrl={}", props.getBaseUrl());
 
         List<Map.Entry<String, ShopAuth>> entries = new ArrayList<>(registry.asMap().entrySet());
 
@@ -160,14 +191,40 @@ public class KwaiFacade {
     /** 刷新卖家信息（余额、店铺名） */
     private void syncSellerInfo(String shopKey, ShopAuth auth,
                                 AccessTokenKsMerchantClient client) throws Exception {
+        log.info("[{}] 使用 token: accessToken={}, refreshToken={}",
+                shopKey,
+                maskToken(auth.getAccessToken()),
+                maskToken(auth.getRefreshToken()));
+
         OpenUserSellerGetResponse sellerResp =
                 sellerInfoService.fetchSellerInfo(client, auth.getAccessToken());
+
+        if (sellerResp == null) {
+            log.error("[{}] 获取卖家信息失败：sellerResp=null", shopKey);
+            throw new IllegalStateException("获取卖家信息失败：响应为空");
+        }
+
+        log.info("[{}] open.user.seller.get 返回: success={}, result={}, code={}, msg={}, subCode={}, subMsg={}, errorMsg={}, requestId={}, dataNull={}",
+                shopKey,
+                sellerResp.isSuccess(),
+                sellerResp.getResult(),
+                sellerResp.getCode(),
+                sellerResp.getMsg(),
+                sellerResp.getSubCode(),
+                sellerResp.getSubMsg(),
+                sellerResp.getErrorMsg(),
+                sellerResp.getRequestId(),
+                sellerResp.getData() == null);
+
+        if (!sellerResp.isSuccess() || sellerResp.getData() == null) {
+            throw new IllegalStateException("获取卖家信息失败，详见上一行快手接口返回");
+        }
+
         SellerInfoDto totalData = SellerInfoDto.builder()
                 .shopId(sellerResp.getData().getSellerId())
                 .shopName(sellerResp.getData().getName())
                 .accountBalance(fundsAccountInfoService.getBalance(client, auth.getAccessToken()))
                 .build();
-        sellerInfoService.sellerInfoupsert(totalData);
     }
 
     /**

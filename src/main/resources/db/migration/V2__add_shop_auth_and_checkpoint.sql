@@ -1,23 +1,23 @@
--- ============================================================
--- V2 补建 shop_auth 和 sync_checkpoint
--- 旧版 V1 执行时这两张表还未存在，通过此版本补建。
--- IF NOT EXISTS 保证幂等，即使已存在也不报错。
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS shop_auth (
-    shop_key            VARCHAR(64)    NOT NULL PRIMARY KEY    COMMENT '店铺标识（YAML key）',
-    access_token        TEXT                                   COMMENT 'access_token',
-    refresh_token       TEXT                                   COMMENT 'refresh_token',
-    expires_at          DATETIME(3)                            COMMENT 'token 过期时间',
-    last_refreshed_at   DATETIME(3)                            COMMENT '最后刷新时间'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='店铺 OAuth 认证信息';
-
-CREATE TABLE IF NOT EXISTS sync_checkpoint (
-    id              BIGINT         AUTO_INCREMENT PRIMARY KEY,
-    shop_key        VARCHAR(64)    NOT NULL              COMMENT '店铺标识',
-    sync_type       VARCHAR(32)    NOT NULL              COMMENT '同步类型：orders / unsettled_orders',
-    last_end_ms     BIGINT         NOT NULL              COMMENT '上次同步的结束时间戳（毫秒，UTC）',
-    synced_at       DATETIME(3)                          COMMENT '上次同步完成时间',
-
-    UNIQUE KEY uk_shop_type (shop_key, sync_type)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='增量同步 Checkpoint';
+---- ============================================================
+---- V2 补建 shop_auth 和 sync_checkpoint
+---- 旧版 V1 执行时这两张表还未存在，通过此版本补建。
+---- IF NOT EXISTS 保证幂等，即使已存在也不报错。
+---- ============================================================
+--
+--CREATE TABLE IF NOT EXISTS shop_auth (
+--    shop_key            VARCHAR(64)    NOT NULL PRIMARY KEY    COMMENT '店铺标识（YAML key）',
+--    access_token        TEXT                                   COMMENT 'access_token',
+--    refresh_token       TEXT                                   COMMENT 'refresh_token',
+--    expires_at          DATETIME(3)                            COMMENT 'token 过期时间',
+--    last_refreshed_at   DATETIME(3)                            COMMENT '最后刷新时间'
+--) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='店铺 OAuth 认证信息';
+--
+--CREATE TABLE IF NOT EXISTS sync_checkpoint (
+--    id              BIGINT         AUTO_INCREMENT PRIMARY KEY,
+--    shop_key        VARCHAR(64)    NOT NULL              COMMENT '店铺标识',
+--    sync_type       VARCHAR(32)    NOT NULL              COMMENT '同步类型：orders / unsettled_orders',
+--    last_end_ms     BIGINT         NOT NULL              COMMENT '上次同步的结束时间戳（毫秒，UTC）',
+--    synced_at       DATETIME(3)                          COMMENT '上次同步完成时间',
+--
+--    UNIQUE KEY uk_shop_type (shop_key, sync_type)
+--) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='增量同步 Checkpoint';
