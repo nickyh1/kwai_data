@@ -1,17 +1,12 @@
 -- ============================================================
--- 快手数据同步项目 - MySQL 建表脚本
--- 编码：utf8mb4  时间列：DATETIME(3) 存 UTC 时间
--- 执行方式：
---   本地：mysql -u root -p ERP < db/init/01_schema.sql
---   Docker：挂载到 /docker-entrypoint-initdb.d/ 自动执行
+-- V1 初始建表
+-- 由 Flyway 在应用启动时自动执行，无需手动操作。
+-- 数据库 ERP 由 MySQL 容器的 MYSQL_DATABASE 环境变量创建，
+-- 此脚本只负责建表和索引。
 -- ============================================================
-
-CREATE DATABASE IF NOT EXISTS ERP CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE ERP;
 
 -- ------------------------------------------------------------
 -- 订单表
--- 原 MongoDB 动态集合 orders_{shopKey} 合并为单表，用 shop_key 区分
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS orders (
     id                                BIGINT         AUTO_INCREMENT PRIMARY KEY,
@@ -49,7 +44,6 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- ------------------------------------------------------------
 -- 未结算订单表
--- 原 MongoDB 动态集合 Unsetllement_{shopKey}
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS unsettled_orders (
     id                              BIGINT         AUTO_INCREMENT PRIMARY KEY,
@@ -65,13 +59,12 @@ CREATE TABLE IF NOT EXISTS unsettled_orders (
     create_time                     DATETIME(3)                          COMMENT '订单创建时间',
 
     UNIQUE KEY uk_shop_oid          (shop_key, oid),
-    INDEX idx_shop_bill_time        (shop_key, bill_time),
-    INDEX idx_settlement_status     (shop_key, settlement_status)
+    INDEX      idx_shop_bill_time   (shop_key, bill_time),
+    INDEX      idx_settlement_status (shop_key, settlement_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='未结算订单';
 
 -- ------------------------------------------------------------
 -- 提现记录表
--- 原 MongoDB 动态集合 Withdraw_{shopKey}
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS withdraw_records (
     id                      BIGINT         AUTO_INCREMENT PRIMARY KEY,
@@ -86,12 +79,11 @@ CREATE TABLE IF NOT EXISTS withdraw_records (
     update_time             DATETIME(3)                          COMMENT '记录更新时间',
 
     UNIQUE KEY uk_shop_withdraw_no  (shop_key, platform_withdraw_no),
-    INDEX idx_withdraw_time         (shop_key, withdraw_time)
+    INDEX      idx_withdraw_time    (shop_key, withdraw_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='提现记录';
 
 -- ------------------------------------------------------------
 -- 卖家信息表
--- 原 MongoDB 集合 seller_info（共用，不按店铺隔离）
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS seller_info (
     id                      BIGINT         AUTO_INCREMENT PRIMARY KEY,
@@ -108,7 +100,6 @@ CREATE TABLE IF NOT EXISTS seller_info (
 
 -- ------------------------------------------------------------
 -- 店铺 OAuth 认证信息表
--- 原 MongoDB 集合 shop_auth，用于持久化 token、支持重启恢复
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS shop_auth (
     shop_key            VARCHAR(64)    NOT NULL PRIMARY KEY    COMMENT '店铺标识（YAML key）',
@@ -120,8 +111,6 @@ CREATE TABLE IF NOT EXISTS shop_auth (
 
 -- ------------------------------------------------------------
 -- 增量同步 Checkpoint 表
--- 记录每个店铺每类数据的上次同步结束时间戳，用于增量拉取
--- sync_type: 'orders' | 'unsettled_orders'
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS sync_checkpoint (
     id              BIGINT         AUTO_INCREMENT PRIMARY KEY,
